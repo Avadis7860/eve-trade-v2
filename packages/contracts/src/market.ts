@@ -1,10 +1,18 @@
 export type AvailabilityStatus = "COMPLETE" | "PARTIAL" | "ERROR" | "UNKNOWN";
 
+export type PrincipalScope = "PUBLIC" | "CHARACTER" | "CORPORATION";
+
 export interface SourceProvenance {
   source_kind: "ESI";
   source_id: string;
   endpoint: string;
-  principal_scope: "PUBLIC";
+  principal_scope: PrincipalScope;
+  principal_id?: number | null;
+}
+
+export interface CharacterSourceProvenance extends SourceProvenance {
+  principal_scope: "CHARACTER";
+  principal_id: number;
 }
 
 export interface EsiMarketOrder {
