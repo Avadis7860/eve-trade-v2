@@ -63,7 +63,7 @@ function errorCode(status: number): string {
   if (status >= 500) return "ESI_SERVER_ERROR";
   if (status === 401 || status === 403) return "ESI_AUTHORIZATION";
   if (status === 404) return "ESI_NOT_FOUND";
-  return `HTTP ${status}: ${errorCode(status)}`;
+  return `ESI_HTTP_${status}`;
 }
 
 function headersOf(response: Response, compatibilityDate: string): EsiResponseMetadata {
@@ -142,7 +142,7 @@ export class EsiHttpClient {
 
         const retryAfter = retryAfterSeconds(response);
         const retryable = response.status === 420 || response.status === 429 || response.status >= 500;
-        const error = new EsiHttpError(response.status, `${errorCode(response.status)}`, retryable, retryAfter);
+        const error = new EsiHttpError(response.status, `HTTP ${response.status}: ${errorCode(response.status)}`, retryable, retryAfter);
 
         if (!retryable || retryCount >= this.maxRetries) throw error;
 
