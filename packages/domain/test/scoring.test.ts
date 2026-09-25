@@ -374,7 +374,7 @@ test("a measured holdout prediction is used only as a scoring signal", () => {
   assert.equal(result.prediction.confidence, "NOT_ASSESSED");
   assert.equal(result.components[3]?.status, "USED");
   assert.equal(result.components[3]?.normalized_value, 0.75);
-  assert.equal(result.components[3]?.contribution, 0.075);
+  assert.ok(Math.abs((result.components[3]?.contribution ?? Number.NaN) - 0.075) < Number.EPSILON);
 });
 
 test("prediction scope mismatch is isolated from the score when prediction is optional", () => {
