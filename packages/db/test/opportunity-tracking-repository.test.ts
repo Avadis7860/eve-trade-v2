@@ -207,6 +207,11 @@ test("persists opportunity identity, repeated observations and outcomes idempote
     assert.equal(persistedOutcomes.length, 1);
     assert.equal(persistedOutcomes[0]?.status, "PARTIALLY_OBSERVED");
 
+    const allObservations = await repository.listAllObservations();
+    assert.equal(allObservations.length, 2);
+    const allOutcomes = await repository.listAllOutcomes();
+    assert.equal(allOutcomes.length, 1);
+
     const counts = await pool.query(
       "SELECT " +
       "(SELECT count(*) FROM opportunities)::int AS opportunities, " +

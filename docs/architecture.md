@@ -186,3 +186,29 @@ The Phase 4 scenario fingerprint is evidence about one analysis execution and is
 Observation history is reconstructed per opportunity and principal scope. This prevents observations made by different characters or scopes from being implicitly merged while preserving one shared economic scenario identity.
 
 Outcome state is never inferred from the disappearance of an opportunity or from a partial transaction. Phase 5 stores explicit evidence and quantity coverage; prediction and scoring remain downstream.
+
+## Phase 6 — Prediction
+
+Prediction consumes only persisted Phase 5 analytical records. The dataset materializer is deterministic and point-in-time correct:
+
+```
+Phase 5 observations + outcomes
+          |
+          v
+prediction dataset
+  |       |        |
+  |       |        +--> explicit scope/provenance
+  |       +-----------> future labels only
+  +-------------------> features from t and prior data
+          |
+          v
+temporal holdout
+          |
+          v
+transparent baseline
+          |
+          v
+measured evaluation / traceable inference
+```
+
+The first model is an empirical rate baseline rather than an opaque ML dependency. A dataset below the declared minimum labeled sample threshold yields `INSUFFICIENT_DATA` instead of a synthetic prediction. The evaluation split excludes a stream that crosses the train/evaluation boundary so one opportunity/principal trajectory cannot silently appear on both sides.
