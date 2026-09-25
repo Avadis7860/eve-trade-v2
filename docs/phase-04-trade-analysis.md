@@ -1,32 +1,155 @@
-# Phase 4 — Trade analysis foundation
+# Phase 4 — Trade Analysis
 
-Phase 4 starts from the stable Market History and Player Data contracts and keeps economics in the pure domain layer.
+## Incrément 02 — orchestration économique déterministe
 
-## Locked in this increment
+Cet incrément verrouille l'orchestration du contrat Phase 4 sans introduire d'API, de persistence d'opportunité ou d'exécution réelle.
 
-### Settlement is separate from observed book price
+### Pipeline
 
-For `TAKER_AGAINST_SELL`, CCP documents that the buyer's requested price is the settlement price when immediate matching occurs. For `TAKER_AGAINST_BUY`, the seller's requested price is the settlement price. The domain therefore stores both:
+```
+TradeAnalysisRequest
+  ↓
+validation scénario / contraintes
+  ↓
+validation market / player / freshness
+  ↓
+simulation leg-by-leg
+  ↓
+capital / fees / logistics validation
+  ↓
+TradeAnalysisResult
+```
 
-- `book_price`: observed counterparty order price;
-- `settlement_price`: deterministic simulated transaction price.
+### Scénarios supportés
 
-The engine never treats a book price as a realized execution.
+Phase 4 peut maintenant analyser séparément :
 
-### Deterministic simulation convention
+```
+TAKER_AGAINST_SELL
+→ détention
+→ TAKER_AGAINST_BUY
+```
 
-CCP does not guarantee that a player can choose which equal-price order will be matched. Phase 4 uses ascending `order_id` as a reproducibility-only tie-break when prices are equal. This is a simulation convention, not an execution guarantee.
+Ce chemin couvre notamment le cas réel où l'opération achète la liquidité vendeuse existante puis revend contre la liquidité acheteuse existante.
 
-### Range semantics
+Le domaine ne déduit jamais l'intention économique à partir de l'identité d'un ordre. `order_id` reste une preuve d'ordre observé et un tie-break de simulation uniquement.
 
-ESI exposes market-order ranges as `station`, `solarsystem`, `region` or jump-count values `1,2,3,4,5,10,20,30,40`.
+Une acquisition `EXISTING_INVENTORY` est aussi supportée. Dans ce cas, la quantité est une donnée explicitement déclarée par le scénario ; elle ne devient pas un coût historique implicite.
 
-The domain can resolve station/system/region compatibility directly. A numeric range requires explicit jump evidence; the engine does not invent a route or jump count.
+### Capital
 
-### Non-fabrication rule
+Deux policies sont supportées :
 
-A complete comparable snapshot is required before matching. Unknown range coverage is surfaced as `RANGE_UNKNOWN` / `DATA_UNAVAILABLE` when it blocks the requested fill.
+- `EXPLICIT_DEPLOYABLE` : le capital déployable est fourni explicitement ;
+- `WALLET_BALANCE` : le wallet complet et frais doit être fourni par Player Data.
 
-## Not yet implemented in this increment
+`committed_escrow` reste distinct. Phase 4 ne calcule jamais silencieusement `wallet - escrow`.
 
-Capital policy, escrow semantics, inventory cost basis, fees aggregation, logistics completeness, temporal freshness gating and the full `TradeAnalysisRequest -> TradeAnalysisResult` orchestration remain in the same Phase 4 issue and branch. No execution API, persistence of opportunities, or UI is introduced.
+Pour une acquisition de marché, le capital limite directement la quantité simulable. Une simulation peut donc être `PARTIAL` lorsque le capital autorise seulement une partie de la quantité demandée.
+
+### Frais
+
+Pour les deux modes taker supportés par cet incrément :
+
+- le broker fee n'est pas appliqué comme coût automatique d'un ordre immédiat ;
+- la sales tax reste due sur la disposition vendue et son taux doit être connu pour obtenir une économie nette complète.
+
+Aucune valeur inconnue de frais n'est convertie en `0`.
+
+La configuration `broker_fee_rate` reste conservée pour les extensions maker futures ; les modes maker ne sont pas exécutables dans cet incrément.
+
+### Inventaire et cost basis
+
+`EXISTING_INVENTORY` peut être utilisé sans inventer de coût historique.
+
+- `cost_basis` fourni : il représente le coût historique total de la quantité du scénario ;
+- `cost_basis` absent/null : le résultat historique complet reste inconnu.
+
+Dans ce second cas, l'analyse peut produire la disposition et ses frais, mais ne fabrique ni `gross_result`, ni `simulated_net_result`, ni `simulated_return` à partir d'un coût nul.
+
+### Logistique
+
+Même lieu d'origine et de destination : aucune logistique de transport n'est requise et un coût de `0` est dérivé du fait qu'aucun déplacement n'est nécessaire.
+
+Origine et destination différentes : un `LogisticsContext` `COMPLETE` avec coût explicite est requis pour qu'une analyse complète soit `EXECUTABLE`.
+
+Aucun routeur, nombre de jumps ou temps de trajet n'est inventé.
+
+### Freshness
+
+`as_of` est la référence temporelle de l'analyse.
+
+Le moteur vérifie :
+
+- timestamp d'observation ;
+- données futures par rapport à `as_of` ;
+- âge maximum déclaré ;
+- expiry ESI lorsqu'elle est fournie par Player Data.
+
+Une ancienne donnée canonique ne devient jamais actuelle silencieusement.
+
+### Market evidence / provenance
+
+Le résultat conserve :
+
+- snapshot d'acquisition ;
+- snapshot de disposition ;
+- `order_id` simulés ;
+- provenance PUBLIC du marché.
+
+Une liquidité de carnet n'est jamais transformée en propriétaire de l'ordre. Les observations CHARACTER de Player Data restent rattachées au personnage observé et ne deviennent pas de l'ownership de la liquidité publique.
+
+### Économie simulée
+
+Pour un round-trip complet :
+
+```
+gross_result
+  = disposition_proceeds - acquisition_cash_outflow
+
+fees_total
+  = sales_tax on disposition
+
+simulated_net_result
+  = gross_result - fees_total - logistics_cost
+
+simulated_return
+  = simulated_net_result / capital_required
+```
+
+`simulated_return` n'est calculé que pour un capital strictement positif.
+
+Les résultats Phase 4 restent explicitement simulés. Ils ne sont pas du `realized P&L`.
+
+### États de sortie
+
+`EXECUTABLE` exige une simulation complète et un résultat économique complet.
+
+`PARTIAL` couvre notamment :
+
+- profondeur insuffisante ;
+- capital ne permettant qu'une fraction ;
+- cost basis historique inconnu ;
+- frais ou logistique manquants.
+
+`STALE` couvre les données qui ne satisfont plus la freshness policy.
+
+`DATA_UNAVAILABLE` couvre les market/player/capital inputs nécessaires mais indisponibles.
+
+`NOT_EXECUTABLE` couvre les scénarios invalides, contraintes incompatibles ou modes maker non supportés.
+
+### Ce qui reste hors périmètre
+
+- placement/modification/annulation d'ordres ;
+- exécution réelle ;
+- persistence et tracking Phase 5 ;
+- realized P&L ;
+- prediction, scoring, recommendation ;
+- API et UI ;
+- corporation wallet / corporation orders ;
+- stratégie maker garantie ;
+- provider automatique de route.
+
+## Incrément 01
+
+Le premier incrément a verrouillé la simulation de carnet multi-level, le settlement distinct du book price, le tie-break déterministe, les ranges ESI et le fingerprint.

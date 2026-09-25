@@ -244,3 +244,374 @@ test("scenario fingerprint is deterministic across object key order", () => {
   });
   assert.equal(a, b);
 });
+
+
+function playerState(overrides: {
+  wallet?: number | null;
+  walletObservedAt?: string | null;
+  assets?: EsiAsset[] | null;
+  assetsObservedAt?: string | null;
+} = {}): CanonicalPlayerState {
+  const walletValue = overrides.wallet ?? 1_000_000;
+  const assets = overrides.assets ?? [];
+  const walletObservedAt = overrides.walletObservedAt ?? "2026-09-25T10:00:00.000Z";
+  const assetsObservedAt = overrides.assetsObservedAt ?? "2026-09-25T10:00:00.000Z";
+  const quality = (observedAt: string | null) => ({
+    availability: "COMPLETE" as const,
+    coverage: "COMPLETE" as const,
+    health: "HEALTHY" as const,
+    observed_at: observedAt,
+    fresh_until: null,
+    observation_ids: ["observation-1"],
+    error: null,
+  });
+
+  return {
+    character_id: 90000001,
+    principal: {
+      character_id: 90000001,
+      name: "Pilot",
+      corporation_id: 98000001,
+      identity_observation_id: "identity-1",
+      observed_at: "2026-09-25T10:00:00.000Z",
+      provenance: {
+        source_kind: "ESI",
+        source_id: "character",
+        endpoint: "/characters/90000001/",
+        principal_scope: "CHARACTER",
+        principal_id: 90000001,
+      },
+    },
+    identity: null,
+    wallet: {
+      quality: quality(walletObservedAt),
+      records: walletValue === null ? null : [walletValue],
+    },
+    journal: { quality: quality("2026-09-25T10:00:00.000Z"), records: [] },
+    transactions: { quality: quality("2026-09-25T10:00:00.000Z"), records: [] },
+    assets: {
+      quality: quality(assetsObservedAt),
+      records: assets,
+    },
+    active_orders: { quality: quality("2026-09-25T10:00:00.000Z"), records: [] },
+  };
+}
+
+function request(overrides: Partial<TradeAnalysisRequest> = {}): TradeAnalysisRequest {
+  const market = snapshot([
+    baseOrder({ order_id: 1, price: 100, volume_remain: 10 }),
+    baseOrder({ order_id: 2, is_buy_order: true, price: 90, volume_remain: 10 }),
+  ]);
+  return {
+    scenario: {
+      type_id: 34,
+      requested_quantity: 5,
+      origin: location,
+      destination: { ...location, location_id: 60003761 },
+      acquisition: {
+        source: "MARKET",
+        market: {
+          execution_mode: "TAKER_AGAINST_SELL",
+          execution_location: location,
+          quantity: 5,
+          limit_price: 100,
+          order_range: "station",
+        },
+      },
+      disposition: {
+        source: "MARKET",
+        market: {
+          execution_mode: "TAKER_AGAINST_BUY",
+          execution_location: { ...location, location_id: 60003761 },
+          quantity: 5,
+          limit_price: 90,
+          order_range: "station",
+        },
+      },
+    },
+    analysis_context: {
+      as_of: "2026-09-25T10:05:00.000Z",
+      freshness_policy: {
+        max_market_age_seconds: 600,
+        max_player_age_seconds: 600,
+      },
+    },
+    acquisition_market: market,
+    disposition_market: {
+      snapshot: { ...market.snapshot, snapshot_id: "snapshot-2", collection_id: "snapshot-2" },
+      market: { ...market.market, collection_id: "snapshot-2" },
+    },
+    player_context: playerState({ wallet: 1_000_000 }),
+    capital_policy: {
+      source: "WALLET_BALANCE",
+      deployable_capital: null,
+      escrow: 500,
+      escrow_is_separate: true,
+    },
+    fee_context: {
+      broker_fee_rate: null,
+      sales_tax_rate: 0.075,
+      source: "EXPLICIT",
+    },
+    logistics_context: {
+      status: "COMPLETE",
+      cost: 50,
+      jump_count: 2,
+      travel_time_seconds: 120,
+      provenance: {
+        source_kind: "ESI",
+        source_id: "route-test",
+        endpoint: "/route/",
+        principal_scope: "PUBLIC",
+      },
+    },
+    constraints: {
+      max_quantity: null,
+      max_capital: null,
+      min_quantity: null,
+      execution_modes: ["TAKER_AGAINST_SELL", "TAKER_AGAINST_BUY"],
+    },
+    ...overrides,
+  };
+}
+
+test("full orchestration computes market-to-market simulated economics without subtracting escrow", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request());
+
+  assert.equal(result.contract_version, "phase-04.2");
+  assert.equal(result.status, "EXECUTABLE");
+  assert.equal(result.acquisition_leg.filled_quantity, 5);
+  assert.equal(result.disposition_leg.filled_quantity, 5);
+  assert.equal(result.capital_context.wallet_cash, 1_000_000);
+  assert.equal(result.capital_context.committed_escrow, 500);
+  assert.equal(result.capital_context.deployable_capital, 1_000_000);
+  assert.equal(result.economic_result.acquisition_cash_outflow, 500);
+  assert.equal(result.economic_result.disposition_proceeds, 450);
+  assert.equal(result.economic_result.fees_total, 33.75);
+  assert.equal(result.economic_result.logistics_cost, 50);
+  assert.equal(result.economic_result.simulated_net_result, -133.75);
+  assert.equal(result.economic_result.simulated_return, -0.2675);
+});
+
+test("capital policy limits the acquisition fill instead of silently overspending", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    capital_policy: {
+      source: "EXPLICIT_DEPLOYABLE",
+      deployable_capital: 250,
+      escrow: 1000,
+      escrow_is_separate: true,
+    },
+  }));
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.acquisition_leg.filled_quantity, 2);
+  assert.equal(result.acquisition_leg.remaining_quantity, 3);
+  assert.equal(result.acquisition_leg.reasons[0]?.code, "CAPITAL_INSUFFICIENT");
+});
+
+test("wallet capital unavailable is not converted to zero", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    player_context: playerState({ wallet: null }),
+  }));
+
+  assert.equal(result.status, "DATA_UNAVAILABLE");
+  assert.equal(result.capital_context.deployable_capital, null);
+  assert.equal(result.status_reasons.some((r) => r.code === "WALLET_UNAVAILABLE"), true);
+});
+
+test("stale market blocks current executability", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    analysis_context: {
+      as_of: "2026-09-25T12:00:00.000Z",
+      freshness_policy: { max_market_age_seconds: 60, max_player_age_seconds: 600 },
+    },
+  }));
+
+  assert.equal(result.status, "STALE");
+  assert.equal(result.status_reasons.some((r) => r.code === "FRESHNESS_EXCEEDED"), true);
+});
+
+test("future market data is explicitly rejected", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    analysis_context: {
+      as_of: "2026-09-25T09:00:00.000Z",
+      freshness_policy: { max_market_age_seconds: 600, max_player_age_seconds: 600 },
+    },
+  }));
+
+  assert.equal(result.status, "STALE");
+  assert.equal(result.status_reasons.some((r) => r.code === "FUTURE_DATA"), true);
+});
+
+test("unknown inventory cost basis keeps the complete historical profit unknown", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    scenario: {
+      ...request().scenario,
+      acquisition: {
+        source: "EXISTING_INVENTORY",
+        inventory: { source: "EXISTING_INVENTORY", type_id: 34, quantity: 5 },
+      },
+    },
+    acquisition_market: null,
+    capital_policy: {
+      source: "EXPLICIT_DEPLOYABLE",
+      deployable_capital: 0,
+      escrow: null,
+      escrow_is_separate: true,
+    },
+  }));
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.acquisition_leg.filled_quantity, 5);
+  assert.equal(result.economic_result.disposition_proceeds, 450);
+  assert.equal(result.economic_result.gross_result, null);
+  assert.equal(result.economic_result.simulated_net_result, null);
+  assert.equal(result.economic_result.simulated_return, null);
+});
+
+test("known inventory cost basis enables disposition economics without treating it as realized P&L", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    scenario: {
+      ...request().scenario,
+      acquisition: {
+        source: "EXISTING_INVENTORY",
+        inventory: {
+          source: "EXISTING_INVENTORY",
+          type_id: 34,
+          quantity: 5,
+          cost_basis: 300,
+        },
+      },
+    },
+    acquisition_market: null,
+    capital_policy: {
+      source: "EXPLICIT_DEPLOYABLE",
+      deployable_capital: 0,
+      escrow: null,
+      escrow_is_separate: true,
+    },
+  }));
+
+  assert.equal(result.status, "EXECUTABLE");
+  assert.equal(result.economic_result.gross_result, 150);
+  assert.equal(result.economic_result.simulated_net_result, 66.25);
+  assert.equal(result.economic_result.capital_required, 300);
+});
+
+test("missing logistics is a blocking completeness issue when locations differ", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    logistics_context: {
+      status: "UNKNOWN",
+      cost: null,
+      jump_count: null,
+      travel_time_seconds: null,
+      provenance: null,
+    },
+  }));
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.status_reasons.some((r) => r.code === "LOGISTICS_INCOMPLETE"), true);
+  assert.equal(result.economic_result.simulated_net_result, null);
+});
+
+test("same-location disposition needs no invented logistics source", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    scenario: {
+      ...request().scenario,
+      destination: location,
+      disposition: {
+        source: "MARKET",
+        market: {
+          execution_mode: "TAKER_AGAINST_BUY",
+          execution_location: location,
+          quantity: 5,
+          limit_price: 90,
+          order_range: "station",
+        },
+      },
+    },
+    disposition_market: snapshot([
+      baseOrder({ order_id: 2, is_buy_order: true, price: 90, volume_remain: 10 }),
+    ]),
+    logistics_context: {
+      status: "UNKNOWN",
+      cost: null,
+      jump_count: null,
+      travel_time_seconds: null,
+      provenance: null,
+    },
+  }));
+
+  assert.equal(result.status, "EXECUTABLE");
+  assert.equal(result.economic_result.logistics_cost, 0);
+});
+
+test("public market provenance is preserved and never turned into order ownership", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request());
+
+  assert.equal(result.market_evidence.acquisition_provenance?.principal_scope, "PUBLIC");
+  assert.equal(result.market_evidence.disposition_provenance?.principal_scope, "PUBLIC");
+  assert.deepEqual(result.market_evidence.acquisition_order_ids, [1]);
+  assert.deepEqual(result.market_evidence.disposition_order_ids, [2]);
+});
+
+test("broker fee rate remains unused for taker execution while sales tax remains required", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    fee_context: {
+      broker_fee_rate: 0.03,
+      sales_tax_rate: 0.075,
+      source: "EXPLICIT",
+    },
+  }));
+
+  assert.equal(result.status, "EXECUTABLE");
+  assert.equal(result.economic_result.fees_total, 33.75);
+});
+
+test("missing sales tax blocks net economics instead of becoming zero", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    fee_context: {
+      broker_fee_rate: null,
+      sales_tax_rate: null,
+      source: "UNKNOWN",
+    },
+  }));
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.economic_result.fees_total, null);
+  assert.equal(result.status_reasons.some((r) => r.code === "FEE_RATE_UNKNOWN"), true);
+});
+
+test("maker modes are reserved and never executable", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    scenario: {
+      ...request().scenario,
+      acquisition: {
+        source: "MARKET",
+        market: {
+          execution_mode: "MAKER_BUY",
+          execution_location: location,
+          quantity: 5,
+          limit_price: 100,
+          order_range: "station",
+        },
+      },
+    },
+  }));
+
+  assert.equal(result.status, "NOT_EXECUTABLE");
+  assert.equal(result.status_reasons.some((r) => r.code === "MAKER_MODE_UNSUPPORTED"), true);
+});

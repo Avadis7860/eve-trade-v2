@@ -8,7 +8,7 @@ import type {
   SourceProvenance,
 } from "./index.js";
 
-export const TRADE_ANALYSIS_CONTRACT_VERSION = "phase-04.1";
+export const TRADE_ANALYSIS_CONTRACT_VERSION = "phase-04.2";
 
 export type TradeExecutionMode =
   | "TAKER_AGAINST_SELL"
@@ -26,12 +26,27 @@ export type TradeAnalysisStatus =
 export type TradeAnalysisReasonCode =
   | "MARKET_UNAVAILABLE"
   | "MARKET_NOT_COMPARABLE"
+  | "MARKET_SCOPE_INVALID"
   | "DEPTH_EXHAUSTED"
   | "RANGE_UNKNOWN"
   | "RANGE_INCOMPATIBLE"
   | "QUANTITY_INVALID"
   | "PRICE_INVALID"
-  | "MAKER_MODE_UNSUPPORTED";
+  | "MAKER_MODE_UNSUPPORTED"
+  | "SCENARIO_INVALID"
+  | "CONSTRAINT_VIOLATION"
+  | "CAPITAL_UNAVAILABLE"
+  | "CAPITAL_INSUFFICIENT"
+  | "WALLET_UNAVAILABLE"
+  | "INVENTORY_UNAVAILABLE"
+  | "INVENTORY_INSUFFICIENT"
+  | "INVENTORY_COST_BASIS_UNKNOWN"
+  | "FEE_RATE_UNKNOWN"
+  | "LOGISTICS_INCOMPLETE"
+  | "FRESHNESS_EXCEEDED"
+  | "FRESHNESS_METADATA_MISSING"
+  | "FUTURE_DATA"
+  | "ECONOMIC_RESULT_UNAVAILABLE";
 
 export interface TradeAnalysisReason {
   code: TradeAnalysisReasonCode;
@@ -58,6 +73,10 @@ export interface ExistingInventoryScenario {
   type_id: number;
   quantity: number;
   asset_ids?: number[];
+  /**
+   * Total historical acquisition cost basis for this scenario quantity.
+   * Null/absent means the historical basis is unknown.
+   */
   cost_basis?: number | null;
 }
 
@@ -164,6 +183,8 @@ export interface MarketEvidence {
   disposition_snapshot_id: string | null;
   acquisition_order_ids: number[];
   disposition_order_ids: number[];
+  acquisition_provenance: SourceProvenance | null;
+  disposition_provenance: SourceProvenance | null;
 }
 
 export interface CapitalContext {
@@ -175,6 +196,8 @@ export interface CapitalContext {
 }
 
 export interface EconomicResult {
+  acquisition_cash_outflow: number | null;
+  disposition_proceeds: number | null;
   gross_result: number | null;
   fees_total: number | null;
   logistics_cost: number | null;
