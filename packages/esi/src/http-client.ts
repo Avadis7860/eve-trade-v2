@@ -63,7 +63,7 @@ function errorCode(status: number): string {
   if (status >= 500) return "ESI_SERVER_ERROR";
   if (status === 401 || status === 403) return "ESI_AUTHORIZATION";
   if (status === 404) return "ESI_NOT_FOUND";
-  return `ESI_HTTP_${status}`;
+  return `HTTP ${status}: ${errorCode(status)}`;
 }
 
 function headersOf(response: Response, compatibilityDate: string): EsiResponseMetadata {
