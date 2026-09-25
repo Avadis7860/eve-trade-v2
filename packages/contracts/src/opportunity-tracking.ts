@@ -1,5 +1,5 @@
 import type { PrincipalScope, SourceProvenance } from "./market.js";
-import type { TradeAnalysisResult, TradeScenario } from "./trade-analysis.js";
+import type { TradeAnalysisResult, TradeExecutionMode, TradeScenario } from "./trade-analysis.js";
 
 export const OPPORTUNITY_TRACKING_CONTRACT_VERSION = "phase-05.1";
 
@@ -35,7 +35,7 @@ export type OpportunityOutcomeEvidenceKind =
   | "ASSET";
 
 export interface OpportunityIdentityMarketLeg {
-  execution_mode: "TAKER_AGAINST_SELL" | "TAKER_AGAINST_BUY";
+  execution_mode: TradeExecutionMode;
   execution_location: {
     region_id: number;
     system_id: number;
