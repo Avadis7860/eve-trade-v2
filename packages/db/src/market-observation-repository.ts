@@ -66,7 +66,7 @@ export class MarketObservationRepository {
   async loadPages(collectionId: string): Promise<MarketPageObservation[]> {
     const result = await this.pool.query(
       "SELECT DISTINCT ON (page) observation_id,collection_id,region_id,page,total_pages,observed_at,status,provenance,http_status,retry_count,records,raw_payload,headers,error " +
-      "FROM market_page_observations WHERE collection_id=$1 ORDER BY page,created_at DESC", [collectionId],
+      "FROM market_page_observations WHERE collection_id=$1 ORDER BY page,observation_sequence DESC", [collectionId],
     );
     return result.rows.map((row) => ({
       observation_id: row.observation_id, collection_id: row.collection_id, region_id: row.region_id, page: row.page, total_pages: row.total_pages,
@@ -112,7 +112,7 @@ export class MarketObservationRepository {
 
   private async completedPages(collectionId: string): Promise<number[]> {
     const result = await this.pool.query(
-      "SELECT page FROM (SELECT DISTINCT ON (page) page,status FROM market_page_observations WHERE collection_id=$1 ORDER BY page,created_at DESC) latest WHERE status='COMPLETE' ORDER BY page", [collectionId],
+      "SELECT page FROM (SELECT DISTINCT ON (page) page,status FROM market_page_observations WHERE collection_id=$1 ORDER BY page,observation_sequence DESC) latest WHERE status='COMPLETE' ORDER BY page", [collectionId],
     );
     return result.rows.map((row) => Number(row.page));
   }

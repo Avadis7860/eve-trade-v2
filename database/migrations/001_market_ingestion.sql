@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS market_collections (
 );
 
 CREATE TABLE IF NOT EXISTS market_page_observations (
+  observation_sequence BIGINT GENERATED ALWAYS AS IDENTITY,
   observation_id UUID PRIMARY KEY,
   collection_id UUID NOT NULL REFERENCES market_collections(collection_id) ON DELETE CASCADE,
   region_id BIGINT NOT NULL,
@@ -30,8 +31,8 @@ CREATE TABLE IF NOT EXISTS market_page_observations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_market_page_collection_page_created
-  ON market_page_observations(collection_id, page, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_market_page_collection_page_latest
+  ON market_page_observations(collection_id, page, observation_sequence DESC);
 
 CREATE INDEX IF NOT EXISTS idx_market_page_region_observed
   ON market_page_observations(region_id, observed_at);
