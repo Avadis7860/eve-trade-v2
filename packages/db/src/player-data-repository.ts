@@ -82,20 +82,27 @@ export class PlayerDataRepository {
       await client.query("BEGIN");
       const principal = state.principal;
       if (principal) {
-        await client.query(
-          "INSERT INTO player_principals (character_id,name,corporation_id,identity_observation_id,observed_at,provenance) " +
-          "VALUES ($1,$2,$3,$4,$5,$6) " +
-          "ON CONFLICT (character_id) DO UPDATE SET name=EXCLUDED.name,corporation_id=EXCLUDED.corporation_id," +
-          "identity_observation_id=EXCLUDED.identity_observation_id,observed_at=EXCLUDED.observed_at,provenance=EXCLUDED.provenance",
-          [
-            principal.character_id,
-            principal.name,
-            principal.corporation_id,
-            principal.identity_observation_id,
-            principal.observed_at,
-            principal.provenance ? JSON.stringify(principal.provenance) : null,
-          ],
-        );
+        if (state.identity?.quality.availability === "COMPLETE" && principal.identity_observation_id) {
+          await client.query(
+            "INSERT INTO player_principals (character_id,name,corporation_id,identity_observation_id,observed_at,provenance) " +
+            "VALUES ($1,$2,$3,$4,$5,$6) " +
+            "ON CONFLICT (character_id) DO UPDATE SET name=EXCLUDED.name,corporation_id=EXCLUDED.corporation_id," +
+            "identity_observation_id=EXCLUDED.identity_observation_id,observed_at=EXCLUDED.observed_at,provenance=EXCLUDED.provenance",
+            [
+              principal.character_id,
+              principal.name,
+              principal.corporation_id,
+              principal.identity_observation_id,
+              principal.observed_at,
+              principal.provenance ? JSON.stringify(principal.provenance) : null,
+            ],
+          );
+        } else {
+          await client.query(
+            "INSERT INTO player_principals (character_id) VALUES ($1) ON CONFLICT (character_id) DO NOTHING",
+            [principal.character_id],
+          );
+        }
       }
 
       await this.saveComponentState(client, state.character_id, "WALLET_BALANCE", state.wallet);
