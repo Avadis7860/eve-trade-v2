@@ -1,3 +1,5 @@
+import { pipelineStateMessage } from "./pipeline-state.js";
+
 const apiBase =
   window.EVE_TRADE_API_BASE ||
   (window.location.port === "3000"
@@ -94,12 +96,19 @@ function renderCard(item) {
 function renderList(payload) {
   listElement.replaceChildren();
 
+  const pipelineMessage = pipelineStateMessage(payload.data.pipeline);
+
   if (payload.data.items.length === 0) {
-    showState("No opportunity is available in the requested evidence scope.");
+    showState(
+      pipelineMessage ??
+        "No opportunity is available in the requested evidence scope.",
+    );
     return;
   }
 
-  clearState();
+  if (pipelineMessage) showState(pipelineMessage);
+  else clearState();
+
   for (const item of payload.data.items) {
     listElement.append(renderCard(item));
   }

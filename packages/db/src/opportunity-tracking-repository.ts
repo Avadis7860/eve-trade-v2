@@ -1,6 +1,7 @@
 import type {
   OpportunityObservation,
   OpportunityOutcome,
+  OpportunityPipelineRun,
 } from "@eve-trade/contracts";
 import { OPPORTUNITY_TRACKING_CONTRACT_VERSION } from "@eve-trade/contracts";
 import { Pool } from "pg";
@@ -69,6 +70,52 @@ export class OpportunityTrackingRepository {
     } finally {
       client.release();
     }
+  }
+
+  async savePipelineRun(run: OpportunityPipelineRun): Promise<void> {
+    await this.pool.query(
+      "INSERT INTO opportunity_pipeline_runs " +
+      "(run_id,region_id,market_collection_id,observed_at,completed_at,status,candidates_generated,analyses_produced,observations_persisted,error) " +
+      "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) " +
+      "ON CONFLICT (run_id) DO UPDATE SET " +
+      "region_id=EXCLUDED.region_id,market_collection_id=EXCLUDED.market_collection_id,observed_at=EXCLUDED.observed_at," +
+      "completed_at=EXCLUDED.completed_at,status=EXCLUDED.status,candidates_generated=EXCLUDED.candidates_generated," +
+      "analyses_produced=EXCLUDED.analyses_produced,observations_persisted=EXCLUDED.observations_persisted,error=EXCLUDED.error",
+      [
+        run.run_id,
+        run.region_id,
+        run.market_collection_id,
+        run.observed_at,
+        run.completed_at,
+        run.status,
+        run.candidates_generated,
+        run.analyses_produced,
+        run.observations_persisted,
+        run.error ? JSON.stringify(run.error) : null,
+      ],
+    );
+  }
+
+  async getLatestPipelineRun(): Promise<OpportunityPipelineRun | null> {
+    const result = await this.pool.query(
+      "SELECT run_id,region_id,market_collection_id,observed_at,completed_at,status," +
+      "candidates_generated,analyses_produced,observations_persisted,error " +
+      "FROM opportunity_pipeline_runs ORDER BY observed_at DESC,run_id DESC LIMIT 1",
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      run_id: row.run_id,
+      region_id: Number(row.region_id),
+      market_collection_id: row.market_collection_id,
+      observed_at: new Date(row.observed_at).toISOString(),
+      completed_at: row.completed_at === null ? null : new Date(row.completed_at).toISOString(),
+      status: row.status,
+      candidates_generated: Number(row.candidates_generated),
+      analyses_produced: Number(row.analyses_produced),
+      observations_persisted: Number(row.observations_persisted),
+      error: row.error ?? null,
+    };
   }
 
   async saveOutcome(outcome: OpportunityOutcome): Promise<void> {

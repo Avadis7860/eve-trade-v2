@@ -70,3 +70,33 @@ No EVE token is stored in the browser.
 ## Phase 8 scope
 
 The shell is intentionally read-only. Buttons and navigation must not imply order placement, modification, cancellation or automatic capital allocation.
+
+
+## Phase 8.1 pipeline state
+
+The opportunity surface consumes the API's `data.pipeline` state to explain an empty or degraded result.
+
+The Web surface keeps these cases distinct:
+
+- no pipeline run yet: the opportunity surface has not been populated by the worker;
+- `NO_CANDIDATES`: the latest complete market evidence contained no eligible candidate;
+- `INPUT_UNAVAILABLE`: required evidence was incomplete or non-comparable;
+- `ERROR`: the latest pipeline execution failed;
+- `SUCCESS`: persisted opportunity observations may be displayed normally.
+
+The pipeline state never creates a card. Opportunity cards exist only when the API returns persisted observations from the tracking read model.
+
+## Production data boundary
+
+Phase 8.1 does not use browser fixtures, seeded demonstration opportunities or UI-only fallback values as production data. The only production path is:
+
+```
+ESI market evidence
+→ canonical state/history
+→ candidate generation
+→ TradeAnalysis
+→ OpportunityObservation
+→ PostgreSQL
+→ API
+→ Web
+```

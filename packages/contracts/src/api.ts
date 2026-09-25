@@ -4,6 +4,9 @@ import type {
   OpportunityPresence,
 } from "./opportunity-tracking.js";
 import type {
+  OpportunityPipelineRun,
+} from "./opportunity-pipeline.js";
+import type {
   ScoringAdviceKind,
   ScoringEvidenceLevel,
   ScoringResult,
@@ -75,11 +78,24 @@ export interface ApiOpportunityDetail extends ApiOpportunitySummary {
   scoring: ScoringResult;
 }
 
+export interface ApiOpportunityPipelineStatus {
+  status: OpportunityPipelineRun["status"];
+  region_id: number;
+  market_collection_id: string | null;
+  observed_at: string;
+  completed_at: string | null;
+  candidates_generated: number;
+  analyses_produced: number;
+  observations_persisted: number;
+  error: OpportunityPipelineRun["error"];
+}
+
 export interface ApiListData<T> {
   items: T[];
   total: number;
   offset: number;
   limit: number;
+  pipeline: ApiOpportunityPipelineStatus | null;
 }
 
 export interface ApiListResponse<T> {
