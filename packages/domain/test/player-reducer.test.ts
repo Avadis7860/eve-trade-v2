@@ -107,3 +107,23 @@ test("partial component never exposes partial records as canonical complete stat
   assert.equal(state.assets.quality.coverage, "PARTIAL");
   assert.equal(state.assets.quality.health, "DEGRADED");
 });
+
+
+test("mixed complete and unknown components make the sync PARTIAL", () => {
+  const state = reconstructPlayerState({
+    collection_id: "sync-2",
+    character_id: 90000001,
+    observed_at: "2026-09-25T10:00:00Z",
+    observations: [
+      obs("WALLET_BALANCE", [42]),
+      obs("ASSET", [], {
+        status: "UNKNOWN",
+        records: [],
+        raw_payload: null,
+        error: { code: "NO_CREDENTIAL", message: "missing", retryable: false },
+      }),
+    ],
+  });
+  assert.equal(state.wallet.quality.availability, "COMPLETE");
+  assert.equal(state.assets.quality.availability, "UNKNOWN");
+});
