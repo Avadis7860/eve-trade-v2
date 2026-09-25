@@ -77,7 +77,7 @@ test("does not declare a collection complete when cache Last-Modified changes", 
     },
   };
   const repo = new MemoryRepository();
-  const client = new EsiMarketClient({userAgent:"EVE-Trade-v2/test"});
+  const client = new EsiMarketClient({userAgent:"EVE-Trade-v2/test", transport});
   const state = await ingestMarketRegion(client, repo as never, {regionId:10000002, collectionId:"00000000-0000-0000-0000-000000000003", observedAt:"2026-09-25T10:00:00Z"});
   assert.equal(state.status, "PARTIAL");
 });
