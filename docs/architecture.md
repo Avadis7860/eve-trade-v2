@@ -166,3 +166,10 @@ History metrics are derived from the canonical order book and missing sides prod
 Order evolution is observational only: APPEARED, UNCHANGED, MODIFIED and DISAPPEARED. A disappearance is never interpreted as filled, cancelled or expired without an external source.
 
 The Phase 2 analytical tables are rebuildable caches/indexes. Phase 1 raw observations remain the reconstruction source of truth.
+
+
+## Phase 3 — Player collection integrity
+
+Authenticated Player observations are bound at the database level to the exact `(collection_id, character_id)` pair of their synchronization. This prevents an observation for one character from being attached to another character's synchronization collection.
+
+The ESI transport pins a compatibility date by default rather than deriving it from wall-clock time. Failed ESI requests retain their final response status, retry count, request metadata and cache/rate-limit headers at the Player observation boundary, so degraded collections remain reconstructible with their collection evidence.
