@@ -120,7 +120,8 @@ export async function ingestMarketRegion(
   }
 
   const refreshed = await repository.getCollection(collectionId);
-  const completed = new Set(refreshed?.completed_pages ?? []);
+  const forceFullRecollection = refreshed?.cache_consistency === "INCONSISTENT";
+  const completed = new Set(forceFullRecollection ? [] : (refreshed?.completed_pages ?? []));
 
   for (let page = 1; page <= expectedPages; page += 1) {
     if (completed.has(page)) continue;
