@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import type { EsiMarketOrder, MarketPageObservation } from "@eve-trade/contracts";
 
 export interface EsiTransport {
@@ -7,6 +8,7 @@ export interface EsiTransport {
 export interface EsiClientOptions {
   baseUrl?: string;
   userAgent: string;
+  compatibilityDate?: string;
   maxRetries?: number;
   retryBaseDelayMs?: number;
   sleep?: (ms: number) => Promise<void>;
@@ -94,7 +96,7 @@ export class EsiMarketClient {
   private readonly transport: EsiTransport;
 
   constructor(private readonly options: EsiClientOptions) {
-    this.baseUrl = options.baseUrl ?? "https://esi.evetech.net/latest";
+    this.baseUrl = options.baseUrl ?? "https://esi.evetech.net";
     this.maxRetries = options.maxRetries ?? 3;
     this.retryBaseDelayMs = options.retryBaseDelayMs ?? 500;
     this.sleep = options.sleep ?? defaultSleep;
@@ -112,6 +114,7 @@ export class EsiMarketClient {
     url.searchParams.set("page", String(page));
 
     let retryCount = 0;
+    const compatibilityDate = this.options.compatibilityDate ?? new Date(this.now().getTime() - 11 * 60 * 60 * 1000).toISOString().slice(0, 10);
     while (true) {
       const observedAt = this.now().toISOString();
       try {
@@ -119,6 +122,7 @@ export class EsiMarketClient {
           headers: {
             Accept: "application/json",
             "User-Agent": this.options.userAgent,
+            "X-Compatibility-Date": compatibilityDate,
           },
         });
 
@@ -127,6 +131,7 @@ export class EsiMarketClient {
           const records = parseOrders(rawPayload);
           const totalPages = parsePages(response);
           return {
+            observation_id: randomUUID(),
             collection_id: "",
             region_id: regionId,
             page,
@@ -155,6 +160,7 @@ export class EsiMarketClient {
               retry_after: header(response, "Retry-After"),
               error_limit_remain: header(response, "X-ESI-Error-Limit-Remain"),
               error_limit_reset: header(response, "X-ESI-Error-Limit-Reset"),
+              compatibility_date: header(response, "X-Compatibility-Date") ?? compatibilityDate,
             },
             error: null,
           };
