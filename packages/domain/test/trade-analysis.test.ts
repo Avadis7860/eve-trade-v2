@@ -901,7 +901,7 @@ test("partial sell-side depth is reported as partial without fabricating the mis
   input.acquisition_market!.market.orders = [
     baseOrder({ order_id: 1, price: 100, volume_remain: 2 }),
   ];
-  input.scenario.acquisition.market.quantity = 5;
+  input.scenario.acquisition.market!.quantity = 5;
   input.scenario.requested_quantity = 5;
 
   const result = analyzeTradeRequest(input);
