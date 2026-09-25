@@ -240,7 +240,7 @@ test("freshness is preserved instead of normalized to a healthy value", () => {
   assert.equal(observation.freshness_state, "STALE");
 });
 
-test("history tracks improvement, deterioration, disappearance, proof loss and return", () => {
+test("history tracks improvement, proof loss, disappearance, return and maintenance", () => {
   const o1 = createOpportunityObservation({
     observed_at: "2026-09-25T10:00:00Z",
     scenario,
@@ -262,14 +262,14 @@ test("history tracks improvement, deterioration, disappearance, proof loss and r
   const o4 = createOpportunityObservation({
     observed_at: "2026-09-25T10:15:00Z",
     scenario,
-    phase4_result: result("p4", null, 0, 0, "DATA_UNAVAILABLE"),
-    presence: "UNAVAILABLE",
+    phase4_result: result("p4", null, 0, 0, "NOT_EXECUTABLE"),
+    presence: "ABSENT",
   });
   const o5 = createOpportunityObservation({
     observed_at: "2026-09-25T10:20:00Z",
     scenario,
-    phase4_result: result("p5", null, 0, 0, "NOT_EXECUTABLE"),
-    presence: "ABSENT",
+    phase4_result: result("p5", 180),
+    presence: "PRESENT",
   });
   const o6 = createOpportunityObservation({
     observed_at: "2026-09-25T10:25:00Z",
