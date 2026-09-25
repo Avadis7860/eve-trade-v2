@@ -4,7 +4,7 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { Pool } from "pg";
-import type { TradeScenario, TradeAnalysisResult } from "@eve-trade/contracts";
+import type { TradeAnalysisResult, TradeScenario } from "@eve-trade/contracts";
 import { createOpportunityObservation } from "@eve-trade/domain";
 import { OpportunityTrackingRepository } from "../src/opportunity-tracking-repository.js";
 
@@ -107,7 +107,15 @@ test("persists opportunity identity, repeated observations and outcomes idempote
     const second = createOpportunityObservation({
       observed_at: "2026-09-25T10:05:00Z",
       scenario,
-      phase4_result: { ...analysis, scenario_fingerprint: "phase4-db-2", economic_result: { ...analysis.economic_result, simulated_net_result: 80, simulated_return: 0.16 } },
+      phase4_result: {
+        ...analysis,
+        scenario_fingerprint: "phase4-db-2",
+        economic_result: {
+          ...analysis.economic_result,
+          simulated_net_result: 80,
+          simulated_return: 0.16,
+        },
+      },
       presence: "PRESENT",
     });
 
@@ -115,9 +123,6 @@ test("persists opportunity identity, repeated observations and outcomes idempote
     await repository.saveObservation(first);
     await repository.saveObservation(second);
 
-    const outcomes = [{
-      ...({} as never),
-    }];
     const outcome = {
       opportunity_id: first.opportunity_id,
       outcome_id: "outcome-1",
@@ -135,7 +140,11 @@ test("persists opportunity identity, repeated observations and outcomes idempote
     const persisted = await repository.listObservations(first.opportunity_id);
     assert.equal(persisted.length, 2);
     assert.equal(persisted[0]?.opportunity_id, first.opportunity_id);
+    assert.deepEqual(persisted[0]?.identity.payload, first.identity.payload);
     assert.equal(persisted[1]?.phase4_result.economic_result.simulated_net_result, 80);
+
+    const persistedIdentity = await repository.getOpportunityIdentity(first.opportunity_id);
+    assert.deepEqual(persistedIdentity?.payload, first.identity.payload);
 
     const persistedOutcomes = await repository.listOutcomes(first.opportunity_id);
     assert.equal(persistedOutcomes.length, 1);
