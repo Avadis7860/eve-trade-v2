@@ -583,6 +583,7 @@ export function predictEmpiricalRate(
 export function evaluateEmpiricalRateModel(
   model: PredictionModel,
   evaluationSamples: PredictionDatasetSample[],
+  evaluationStart: string | null = null,
 ): PredictionEvaluation {
   const labels = evaluationSamples
     .map((sample) => targetFor(sample, model.target_kind))
@@ -594,7 +595,7 @@ export function evaluateEmpiricalRateModel(
       target_kind: model.target_kind,
       model_version: model.model_version,
       dataset_id: model.dataset_id,
-      evaluation_start: null,
+      evaluation_start: evaluationStart,
       sample_count: 0,
       positive_count: 0,
       negative_count: 0,
@@ -621,6 +622,7 @@ export function evaluateEmpiricalRateModel(
     target_kind: model.target_kind,
     model_version: model.model_version,
     dataset_id: model.dataset_id,
+    evaluation_start: evaluationStart,
     sample_count: labels.length,
     positive_count: positiveCount,
     negative_count: negativeCount,
