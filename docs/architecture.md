@@ -173,3 +173,16 @@ The Phase 2 analytical tables are rebuildable caches/indexes. Phase 1 raw observ
 Authenticated Player observations are bound at the database level to the exact `(collection_id, character_id)` pair of their synchronization. This prevents an observation for one character from being attached to another character's synchronization collection.
 
 The ESI transport pins a compatibility date by default rather than deriving it from wall-clock time. Failed ESI requests retain their final response status, retry count, request metadata and cache/rate-limit headers at the Player observation boundary, so degraded collections remain reconstructible with their collection evidence.
+
+## Phase 5 — Opportunity tracking
+
+Opportunity tracking separates three layers:
+- deterministic opportunity identity for the stable economic scenario;
+- append-oriented observations that retain Phase 4 analysis, market evidence, provenance, scope, freshness and timestamp;
+- independent outcome evidence from Player Data.
+
+The Phase 4 scenario fingerprint is evidence about one analysis execution and is not reused as the persistent opportunity identity because it contains time/source/configuration inputs.
+
+Observation history is reconstructed per opportunity and principal scope. This prevents observations made by different characters or scopes from being implicitly merged while preserving one shared economic scenario identity.
+
+Outcome state is never inferred from the disappearance of an opportunity or from a partial transaction. Phase 5 stores explicit evidence and quantity coverage; prediction and scoring remain downstream.
