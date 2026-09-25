@@ -19,6 +19,7 @@ function failedPage(
 ): MarketPageObservation {
   const esiError = error instanceof EsiHttpError ? error : null;
   return {
+    observation_id: randomUUID(),
     collection_id: collectionId,
     region_id: regionId,
     page,
@@ -47,6 +48,7 @@ function failedPage(
       retry_after: esiError?.retryAfterSeconds === null ? null : String(esiError?.retryAfterSeconds ?? ""),
       error_limit_remain: null,
       error_limit_reset: null,
+      compatibility_date: null,
     },
     error: {
       code: esiError ? `ESI_HTTP_${esiError.status}` : "ESI_NETWORK_ERROR",
