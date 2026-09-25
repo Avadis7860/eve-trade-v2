@@ -3,7 +3,7 @@
   "dockerComposeFile": "compose.yaml",
   "service": "workspace",
   "workspaceFolder": "/workspaces/eve-trade-v2",
-  "remoteUser": "vscode",
+  "remoteUser": "node",
   "shutdownAction": "stopCompose",
   "forwardPorts": [3000, 3001],
   "portsAttributes": {
