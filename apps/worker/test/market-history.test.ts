@@ -84,12 +84,13 @@ test("rebuilds history from persisted observations without an ESI client", async
         : [page("obs102", secondId, "2026-09-25T10:10:00.000Z", [order(1, 101)])];
     },
   };
-  let saved: MarketHistoryBuildResult | null = null;
-  const target = { async replace(result: MarketHistoryBuildResult) { saved = structuredClone(result); } };
+  const saved: { value: MarketHistoryBuildResult | null } = { value: null };
+  const target = { async replace(result: MarketHistoryBuildResult) { saved.value = structuredClone(result); } };
   const result = await rebuildMarketHistory(source, target);
   assert.equal(result.snapshots.length, 2);
   assert.equal(result.snapshots[0]?.observation_kind, "INITIAL");
   assert.equal(result.snapshots[1]?.observation_kind, "NEW_STATE");
-  assert.equal(saved?.snapshots.length, 2);
-  assert.equal(saved?.metrics.length, 2);
+  assert.ok(saved.value);
+  assert.equal(saved.value.snapshots.length, 2);
+  assert.equal(saved.value.metrics.length, 2);
 });
