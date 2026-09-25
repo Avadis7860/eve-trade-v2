@@ -207,3 +207,11 @@ test("missing ESI freshness metadata is UNVERIFIED rather than fabricated", () =
   assert.equal(result.snapshots[0]?.comparison_eligible, true);
   assert.equal(result.snapshots[0]?.state_fingerprint !== null, true);
 });
+
+
+test("no persisted pages means source freshness is UNVERIFIED", () => {
+  const result = buildMarketHistory([
+    {collection: collection("00000000-0000-0000-0000-000000000041", "2026-09-25T10:00:00.000Z", "ERROR"), pages: []},
+  ]);
+  assert.equal(result.snapshots[0]?.source_consistency, "UNVERIFIED");
+});
