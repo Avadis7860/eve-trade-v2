@@ -85,3 +85,63 @@ export interface CanonicalMarketState {
   cache_last_modified: string | null;
   cache_consistency: "CONSISTENT" | "UNVERIFIED" | "INCONSISTENT";
 }
+
+export type MarketHistorySourceConsistency = "CONSISTENT" | "UNVERIFIED" | "INCONSISTENT";
+export type MarketHistoryObservationKind = "INITIAL" | "REPEAT" | "NEW_STATE" | "NOT_COMPARABLE";
+export type MarketOrderChangeKind = "APPEARED" | "UNCHANGED" | "MODIFIED" | "DISAPPEARED";
+export type MarketOrderComparableField = Exclude<keyof EsiMarketOrder, "order_id">;
+
+export interface MarketHistorySnapshot {
+  snapshot_id: string;
+  collection_id: string;
+  region_id: number;
+  observed_at: string;
+  status: AvailabilityStatus;
+  comparison_eligible: boolean;
+  state_fingerprint: string | null;
+  source_last_modified: string | null;
+  source_compatibility_date: string | null;
+  source_consistency: MarketHistorySourceConsistency;
+  observation_kind: MarketHistoryObservationKind;
+  previous_snapshot_id: string | null;
+  source_pages: number | null;
+}
+
+export interface MarketSnapshotTypeMetrics {
+  snapshot_id: string;
+  type_id: number;
+  best_buy_price: number | null;
+  best_buy_volume: number | null;
+  best_sell_price: number | null;
+  best_sell_volume: number | null;
+  spread_absolute: number | null;
+  spread_relative: number | null;
+  buy_visible_volume: number;
+  sell_visible_volume: number;
+}
+
+export interface MarketDepthLevel {
+  snapshot_id: string;
+  type_id: number;
+  is_buy_order: boolean;
+  price: number;
+  volume_remain: number;
+  order_count: number;
+}
+
+export interface MarketOrderEvolution {
+  previous_snapshot_id: string;
+  snapshot_id: string;
+  order_id: number;
+  kind: MarketOrderChangeKind;
+  changed_fields: MarketOrderComparableField[];
+  previous_order: EsiMarketOrder | null;
+  current_order: EsiMarketOrder | null;
+}
+
+export interface MarketHistoryBuildResult {
+  snapshots: MarketHistorySnapshot[];
+  metrics: MarketSnapshotTypeMetrics[];
+  depth_levels: MarketDepthLevel[];
+  order_evolution: MarketOrderEvolution[];
+}

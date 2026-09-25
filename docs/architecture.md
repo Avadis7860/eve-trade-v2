@@ -102,3 +102,32 @@ ESI currently recommends a compatibility-date header and documents X-Pages pagin
 Build in dependency order: ingestion -> persistence/history -> player state -> trade analysis -> opportunity history -> prediction -> recommendation -> API/UI.
 
 A downstream module consumes explicit upstream contracts. Shortcuts across boundaries require an architectural decision recorded in the repository.
+
+## Phase 2 — Market history
+
+Phase 2 consumes only persisted Phase 1 observations. It does not call ESI and does not replace raw observations or the canonical market state.
+
+The historical layer separates three identities:
+
+- observation occurrence: the Phase 1 `collection_id` and collection `observed_at`;
+- semantic market state: deterministic `state_fingerprint` computed from the canonical order set;
+- source metadata: effective ESI compatibility date and cache freshness metadata.
+
+A new `observed_at` with the same `state_fingerprint` is an observation repeat, not a market change. If a later collection returns to a previously seen fingerprint, it remains a new historical occurrence.
+
+Only complete, reconstructible collections are eligible for market-state comparison and order lifecycle classification. PARTIAL, ERROR and UNKNOWN collections remain availability records and cannot manufacture missing orders, prices, depth or lifecycle events.
+
+History metrics are derived from the canonical order book:
+
+- best bid and best ask;
+- absolute spread = `best_ask - best_bid`;
+- relative spread = `(best_ask - best_bid) / best_ask`;
+- visible volume and top-level visible volume by side/type;
+- complete price-level depth derived from `volume_remain`.
+
+Missing sides produce null/unknown metrics rather than zero.
+
+Order evolution is observational only: APPEARED, UNCHANGED, MODIFIED and DISAPPEARED. A disappearance is never interpreted as filled, cancelled or expired without an external source.
+
+The Phase 2 analytical tables are rebuildable caches/indexes. Phase 1 raw observations remain the reconstruction source of truth.
+

@@ -10,7 +10,7 @@ EVE / ESI -> ingestion -> historical observations -> canonical market and player
 
 Phase 1 implements the first real data path:
 
-ESI market orders -> paginated raw observations -> PostgreSQL persistence -> deterministic canonical market state.
+ESI market orders -> paginated raw observations -> PostgreSQL persistence -> deterministic canonical market state -> reconstructible market history.
 
 The ingestion boundary preserves provenance, observation timestamps, HTTP/cache/rate-limit metadata and raw payloads. Incomplete or errored collections are never represented as an empty valid market.
 
@@ -33,4 +33,4 @@ Install dependencies with pnpm 10.15+, apply database/migrations/001_market_inge
 pnpm typecheck
 pnpm test
 
-The Phase 1 integration path is the worker ingestion function using the ESI client and market observation repository. A PostgreSQL instance is required for persistence validation.
+The Phase 1 integration path is the worker ingestion function using the ESI client and market observation repository. Phase 2 rebuilds historical state from persisted observations without calling ESI. Apply migrations in lexical order, including `002_market_history.sql`, before PostgreSQL validation. A PostgreSQL instance is required for persistence validation.

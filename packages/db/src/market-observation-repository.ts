@@ -42,6 +42,25 @@ export class MarketObservationRepository {
     );
   }
 
+  async listCollections(): Promise<MarketCollection[]> {
+    const result = await this.pool.query(
+      "SELECT collection_id,region_id,observed_at,expected_pages,status,provenance,cache_last_modified,cache_consistency,error " +
+      "FROM market_collections ORDER BY observed_at,collection_id",
+    );
+    return Promise.all(result.rows.map(async (row) => ({
+      collection_id: row.collection_id,
+      region_id: Number(row.region_id),
+      observed_at: new Date(row.observed_at).toISOString(),
+      expected_pages: row.expected_pages,
+      completed_pages: await this.completedPages(row.collection_id),
+      status: row.status,
+      provenance: row.provenance,
+      cache_last_modified: row.cache_last_modified,
+      cache_consistency: row.cache_consistency,
+      error: row.error,
+    })));
+  }
+
   async getCollection(collectionId: string): Promise<MarketCollection | null> {
     const result = await this.pool.query(
       "SELECT collection_id,region_id,observed_at,expected_pages,status,provenance,cache_last_modified,cache_consistency,error " +
