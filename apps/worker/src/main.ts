@@ -15,11 +15,15 @@ const compatibilityDate = process.env.ESI_COMPATIBILITY_DATE;
 if (!databaseUrl) throw new Error("DATABASE_URL is required");
 if (!userAgent) throw new Error("ESI_USER_AGENT is required");
 
+const esiOptions = compatibilityDate
+  ? { userAgent, compatibilityDate }
+  : { userAgent };
+
 const pool = new Pool({ connectionString: databaseUrl });
 try {
   const playerCharacterId = Number(process.env.PLAYER_CHARACTER_ID);
   if (Number.isInteger(playerCharacterId) && playerCharacterId > 0) {
-    const http = new EsiHttpClient({ userAgent, compatibilityDate });
+    const http = new EsiHttpClient(esiOptions);
     const client = new EsiPlayerClient(http);
     const repository = new PlayerDataRepository(pool);
     const sync = await syncPlayerData(
@@ -43,7 +47,7 @@ try {
     const regionId = Number(process.env.REGION_ID);
     if (!Number.isInteger(regionId) || regionId <= 0) throw new Error("REGION_ID must be a positive integer in market mode");
     const repository = new MarketObservationRepository(pool);
-    const client = new EsiMarketClient({ userAgent, compatibilityDate });
+    const client = new EsiMarketClient(esiOptions);
     const state = await ingestMarketRegion(client, repository, { regionId });
     console.log(JSON.stringify({
       collection_id: state.collection_id,
