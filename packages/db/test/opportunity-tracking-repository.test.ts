@@ -4,8 +4,11 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { Pool } from "pg";
-import type { TradeAnalysisResult, TradeScenario } from "@eve-trade/contracts";
-import { createOpportunityObservation } from "@eve-trade/domain";
+import type {
+  OpportunityObservation,
+  TradeAnalysisResult,
+  TradeScenario,
+} from "@eve-trade/contracts";
 import { OpportunityTrackingRepository } from "../src/opportunity-tracking-repository.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -91,6 +94,61 @@ const analysis: TradeAnalysisResult = {
   },
 };
 
+
+function observation(
+  observedAt: string,
+  phase4Result: TradeAnalysisResult,
+  observationId: string,
+): OpportunityObservation {
+  return {
+    opportunity_id: "opportunity-1",
+    observation_id: observationId,
+    observed_at: observedAt,
+    identity: {
+      opportunity_id: "opportunity-1",
+      contract_version: "phase-05.1",
+      payload: {
+        type_id: 34,
+        requested_quantity: 5,
+        acquisition_source: "MARKET",
+        acquisition_market: {
+          execution_mode: "TAKER_AGAINST_SELL",
+          execution_location: { region_id: 10000002, system_id: 30000142, location_id: 60003760 },
+          limit_price: 100,
+          order_range: "region",
+        },
+        disposition_market: {
+          execution_mode: "TAKER_AGAINST_BUY",
+          execution_location: { region_id: 10000043, system_id: 30002187, location_id: 60008494 },
+          limit_price: 120,
+          order_range: "region",
+        },
+        origin: { region_id: 10000002, system_id: 30000142, location_id: 60003760 },
+        destination: { region_id: 10000043, system_id: 30002187, location_id: 60008494 },
+      },
+    },
+    scenario_snapshot: scenario,
+    phase4_contract_version: phase4Result.contract_version,
+    phase4_scenario_fingerprint: phase4Result.scenario_fingerprint,
+    presence: "PRESENT",
+    freshness_state: "CURRENT",
+    phase4_result: phase4Result,
+    market_snapshot_ids: {
+      acquisition: phase4Result.market_evidence.acquisition_snapshot_id,
+      disposition: phase4Result.market_evidence.disposition_snapshot_id,
+    },
+    order_ids: {
+      acquisition: phase4Result.market_evidence.acquisition_order_ids,
+      disposition: phase4Result.market_evidence.disposition_order_ids,
+    },
+    provenance: [
+      phase4Result.market_evidence.acquisition_provenance!,
+      phase4Result.market_evidence.disposition_provenance!,
+    ],
+    observer: null,
+  };
+}
+
 test("persists opportunity identity, repeated observations and outcomes idempotently", { skip: !databaseUrl }, async () => {
   const pool = new Pool({ connectionString: databaseUrl });
   try {
@@ -98,16 +156,10 @@ test("persists opportunity identity, repeated observations and outcomes idempote
     await pool.query("TRUNCATE opportunity_outcomes, opportunity_observations, opportunities CASCADE");
 
     const repository = new OpportunityTrackingRepository(pool);
-    const first = createOpportunityObservation({
-      observed_at: "2026-09-25T10:00:00Z",
-      scenario,
-      phase4_result: analysis,
-      presence: "PRESENT",
-    });
-    const second = createOpportunityObservation({
-      observed_at: "2026-09-25T10:05:00Z",
-      scenario,
-      phase4_result: {
+    const first = observation("2026-09-25T10:00:00Z", analysis, "observation-1");
+    const second = observation(
+      "2026-09-25T10:05:00Z",
+      {
         ...analysis,
         scenario_fingerprint: "phase4-db-2",
         economic_result: {
@@ -116,8 +168,8 @@ test("persists opportunity identity, repeated observations and outcomes idempote
           simulated_return: 0.16,
         },
       },
-      presence: "PRESENT",
-    });
+      "observation-2",
+    );
 
     await repository.saveObservation(first);
     await repository.saveObservation(first);
