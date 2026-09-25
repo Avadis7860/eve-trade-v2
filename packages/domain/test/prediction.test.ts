@@ -321,6 +321,33 @@ test("temporal split excludes trajectories that cross the evaluation boundary", 
   assert.equal(split.excluded_samples.some((sample) => sample.opportunity_id === "cross"), true);
 });
 
+test("temporal split follows the selected outcome target instead of hardcoding persistence", () => {
+  const training = observation("train-outcome", "tro1", "2026-09-25T09:00:00Z", 100, "PRESENT", 90000001);
+  const evaluation = observation("eval-outcome", "evo1", "2026-09-25T11:00:00Z", 100, "PRESENT", 90000001);
+  const dataset = buildPredictionDataset({
+    observations: [training, evaluation],
+    outcomes: [
+      outcome("train-outcome", "tr-outcome", "2026-09-25T09:05:00Z", 90000001, "COMPLETELY_OBSERVED"),
+      outcome("eval-outcome", "ev-outcome", "2026-09-25T11:05:00Z", 90000001, "COMPLETELY_OBSERVED"),
+    ],
+  }, datasetConfig);
+
+  const split = splitPredictionDataset(
+    dataset,
+    "2026-09-25T10:00:00Z",
+    "OUTCOME_OBSERVED_AT_HORIZON",
+  );
+
+  assert.deepEqual(
+    split.training_samples.map((sample) => sample.opportunity_id),
+    ["train-outcome"],
+  );
+  assert.deepEqual(
+    split.evaluation_samples.map((sample) => sample.opportunity_id),
+    ["eval-outcome"],
+  );
+});
+
 test("empirical baseline refuses to train below the explicit minimum", () => {
   const first = observation("train", "tr1", "2026-09-25T08:00:00Z", 100);
   const second = observation("train", "tr2", "2026-09-25T08:05:00Z", 100, "ABSENT");
