@@ -10,6 +10,7 @@ import type {
   MarketOrderEvolution,
   MarketSnapshotTypeMetrics,
   MarketPageObservation,
+  MarketHistoryBuildResult,
 } from "@eve-trade/contracts";
 import { reconstructCanonicalMarket } from "./market-reducer.js";
 
@@ -227,13 +228,6 @@ export function compareMarketOrders(
 export interface MarketHistoryInput {
   collection: MarketCollection;
   pages: MarketPageObservation[];
-}
-
-export interface MarketHistoryBuildResult {
-  snapshots: MarketHistorySnapshot[];
-  metrics: MarketSnapshotTypeMetrics[];
-  depth_levels: MarketDepthLevel[];
-  order_evolution: MarketOrderEvolution[];
 }
 
 function unavailableSnapshot(
