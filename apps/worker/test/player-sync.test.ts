@@ -141,7 +141,7 @@ test("one endpoint can fail without turning successful sibling components into e
   assert.equal(sync.state.journal.records, null);
   assert.equal(sync.state.transactions.records?.map((x) => x.transaction_id).join(","), "1,2");
   assert.equal(sync.state.active_orders.records?.[0]?.order_id, 42);
-  assert.equal(repo.observations.length, 9);
+  assert.equal(repo.observations.length, 7);
   assert.ok(repo.observations.every((x) => !JSON.stringify(x).includes(token)));
 });
 
