@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS market_history_snapshots (
   source_compatibility_date TEXT,
   source_consistency TEXT NOT NULL CHECK (source_consistency IN ('CONSISTENT','UNVERIFIED','INCONSISTENT')),
   observation_kind TEXT NOT NULL CHECK (observation_kind IN ('INITIAL','REPEAT','NEW_STATE','NOT_COMPARABLE')),
-  previous_snapshot_id UUID REFERENCES market_history_snapshots(snapshot_id),
+  previous_snapshot_id UUID REFERENCES market_history_snapshots(snapshot_id) ON DELETE SET NULL,
   source_pages INTEGER,
   history_contract_version INTEGER NOT NULL
 );
