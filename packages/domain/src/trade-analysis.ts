@@ -188,7 +188,7 @@ function finalize(
     if (quantity <= 0) continue;
 
     fills.push({
-      snapshot_id: input.snapshot.snapshot_id,
+      snapshot_id: input.snapshot.snapshot.snapshot_id,
       order_id: order.order_id,
       price: order.price,
       quantity,
