@@ -310,6 +310,10 @@ export async function syncPlayerData(
       }
     }
 
+    for (const item of observations) {
+      await repository.saveObservation(item);
+    }
+
     const sync = buildPlayerSync({
       collection_id: collectionId,
       character_id: options.characterId,
