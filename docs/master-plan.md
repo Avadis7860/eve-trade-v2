@@ -38,7 +38,22 @@ Phase 2 keeps observation time separate from semantic market state:
 - derived history tables are rebuildable from Phase 1 persisted observations.
 
 ### Phase 3 — Player data
-Synchronize characters and financial/trading data: wallet, journal, transactions, assets and active orders, with explicit scope and provenance.
+Synchronize character-scoped Player Data from ESI: character identity, wallet balance, wallet journal, wallet transactions, assets and active market orders.
+
+Phase 3 introduces a reusable ESI HTTP boundary supporting public and authenticated requests. Credentials are injected into the transport and are not part of the observation or canonical contracts.
+
+Player observations are append-oriented and preserve source identity, endpoint, character scope, observation timestamp, response/cache/rate-limit metadata, page/cursor identity, raw payload and explicit availability/error state.
+
+Canonical Player state is derived and typed:
+- wallet balance is an observed scalar state;
+- wallet journal remains historical journal data;
+- wallet transactions remain execution evidence;
+- assets remain an inventory snapshot;
+- active orders remain current character-scoped orders.
+
+P3 separates availability, coverage and health, and does not turn UNKNOWN/PARTIAL/ERROR into zeros or valid empty business states. Corporation data is a future scope and is not merged into P3.
+
+P3 deliberately excludes profit/ROI/arbitrage/scoring/prediction/recommendation/allocation and order execution.
 
 ### Phase 4 — Trade analysis
 Evaluate executable inter-regional opportunities using order-book depth, capital, fees, logistics and configurable constraints.
