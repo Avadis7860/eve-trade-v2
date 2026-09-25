@@ -2,7 +2,8 @@ import type {
   OpportunityObservation,
   OpportunityOutcome,
 } from "@eve-trade/contracts";
-import { Pool, type PoolClient } from "pg";
+import { OPPORTUNITY_TRACKING_CONTRACT_VERSION } from "@eve-trade/contracts";
+import { Pool } from "pg";
 
 export class OpportunityTrackingRepository {
   constructor(private readonly pool: Pool) {}
@@ -85,41 +86,34 @@ export class OpportunityTrackingRepository {
         outcome.expected_quantity,
         outcome.observed_quantity,
         JSON.stringify(outcome.evidence),
-        outcome.observed_subresult === null ? null : JSON.stringify(outcome.observed_subresult),
+        outcome.observed_subresult === null
+          ? null
+          : JSON.stringify(outcome.observed_subresult),
       ],
     );
   }
 
   async listObservations(opportunityId: string): Promise<OpportunityObservation[]> {
     const result = await this.pool.query(
-      "SELECT observation_id,opportunity_id,observed_at,phase4_contract_version,phase4_scenario_fingerprint," +
-      "presence,freshness_state,provenance,observer,scenario_snapshot,analysis_result " +
-      "FROM opportunity_observations WHERE opportunity_id=$1 " +
-      "ORDER BY observed_at,observation_id",
+      "SELECT o.observation_id,o.opportunity_id,o.observed_at,o.phase4_contract_version," +
+      "o.phase4_scenario_fingerprint,o.presence,o.freshness_state,o.provenance,o.observer," +
+      "o.scenario_snapshot,o.analysis_result,t.identity_contract_version,t.identity_payload " +
+      "FROM opportunity_observations o " +
+      "JOIN opportunities t ON t.opportunity_id=o.opportunity_id " +
+      "WHERE o.opportunity_id=$1 ORDER BY o.observed_at,o.observation_id",
       [opportunityId],
     );
 
     return result.rows.map((row) => {
-      const resultValue = row.analysis_result;
+      const resultValue = row.analysis_result as OpportunityObservation["phase4_result"];
       return {
         opportunity_id: row.opportunity_id,
         observation_id: row.observation_id,
         observed_at: new Date(row.observed_at).toISOString(),
         identity: {
           opportunity_id: row.opportunity_id,
-          contract_version: OPPORTUNITY_TRACKING_CONTRACT_VERSION,
-          payload: {
-            type_id: Number(resultValue.scenario?.type_id),
-            requested_quantity: Number(resultValue.scenario?.requested_quantity),
-            acquisition_source: resultValue.scenario?.acquisition?.source,
-            acquisition_market:
-              resultValue.scenario?.acquisition?.source === "MARKET"
-                ? resultValue.scenario.acquisition.market
-                : null,
-            disposition_market: resultValue.scenario?.disposition?.market,
-            origin: resultValue.scenario?.origin,
-            destination: resultValue.scenario?.destination,
-          },
+          contract_version: row.identity_contract_version,
+          payload: row.identity_payload,
         },
         scenario_snapshot: row.scenario_snapshot,
         phase4_contract_version: row.phase4_contract_version,
@@ -128,12 +122,12 @@ export class OpportunityTrackingRepository {
         freshness_state: row.freshness_state,
         phase4_result: resultValue,
         market_snapshot_ids: {
-          acquisition: resultValue.market_evidence?.acquisition_snapshot_id ?? null,
-          disposition: resultValue.market_evidence?.disposition_snapshot_id ?? null,
+          acquisition: resultValue.market_evidence.acquisition_snapshot_id,
+          disposition: resultValue.market_evidence.disposition_snapshot_id,
         },
         order_ids: {
-          acquisition: resultValue.market_evidence?.acquisition_order_ids ?? [],
-          disposition: resultValue.market_evidence?.disposition_order_ids ?? [],
+          acquisition: [...resultValue.market_evidence.acquisition_order_ids],
+          disposition: [...resultValue.market_evidence.disposition_order_ids],
         },
         provenance: row.provenance ?? [],
         observer: row.observer ?? null,
@@ -143,8 +137,9 @@ export class OpportunityTrackingRepository {
 
   async listOutcomes(opportunityId: string): Promise<OpportunityOutcome[]> {
     const result = await this.pool.query(
-      "SELECT outcome_id,opportunity_id,observed_at,status,evidence_coverage,expected_quantity,observed_quantity,evidence,observed_subresult " +
-      "FROM opportunity_outcomes WHERE opportunity_id=$1 ORDER BY observed_at,outcome_id",
+      "SELECT outcome_id,opportunity_id,observed_at,status,evidence_coverage,expected_quantity," +
+      "observed_quantity,evidence,observed_subresult FROM opportunity_outcomes " +
+      "WHERE opportunity_id=$1 ORDER BY observed_at,outcome_id",
       [opportunityId],
     );
     return result.rows.map((row) => ({
@@ -158,5 +153,19 @@ export class OpportunityTrackingRepository {
       evidence: row.evidence ?? [],
       observed_subresult: row.observed_subresult ?? null,
     }));
+  }
+
+  async getOpportunityIdentity(opportunityId: string): Promise<OpportunityObservation["identity"] | null> {
+    const result = await this.pool.query(
+      "SELECT opportunity_id,identity_contract_version,identity_payload FROM opportunities WHERE opportunity_id=$1",
+      [opportunityId],
+    );
+    const row = result.rows[0];
+    if (!row) return null;
+    return {
+      opportunity_id: row.opportunity_id,
+      contract_version: row.identity_contract_version,
+      payload: row.identity_payload,
+    };
   }
 }
