@@ -1,0 +1,16 @@
+{
+  "name": "@eve-trade/web",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test --test-concurrency=1",
+    "start": "tsx src/server.ts",
+    "dev": "tsx src/server.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
