@@ -68,6 +68,8 @@ The resulting dataset is designed for later outcome labeling and prediction inpu
 ### Phase 6 — Prediction
 Train and run models against historical opportunities to estimate persistence, liquidity, spread evolution and execution-related outcomes.
 
+Phase 6 now has an explicit point-in-time prediction contract ("phase-06.1") and a deterministic dataset materializer fed only by persisted Phase 5 observations/outcomes. The first baseline is empirical and refuses to produce a model below its minimum labeled sample threshold. Temporal evaluation excludes streams that cross the evaluation boundary, and scope/provenance remain explicit through every sample.
+
 ### Phase 7 — Scoring and advice
 Combine deterministic economics with prediction outputs into transparent opportunity scores and actionable advice.
 
