@@ -80,11 +80,17 @@ export interface ExistingInventoryScenario {
   cost_basis?: number | null;
 }
 
-export interface AcquisitionScenario {
-  source: "MARKET" | "EXISTING_INVENTORY";
-  market?: MarketLegScenario;
-  inventory?: ExistingInventoryScenario;
-}
+export type AcquisitionScenario =
+  | {
+      source: "MARKET";
+      market: MarketLegScenario;
+      inventory?: never;
+    }
+  | {
+      source: "EXISTING_INVENTORY";
+      inventory: ExistingInventoryScenario;
+      market?: never;
+    };
 
 export interface DispositionScenario {
   source: "MARKET";

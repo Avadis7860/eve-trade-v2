@@ -11,6 +11,7 @@ import type {
   TradeAnalysisRequest,
   TradeAnalysisResult,
   TradeExecutionMode,
+  TradeLegResult,
   TradeScenario,
   LogisticsContext,
   PlayerAnalysisContext,
@@ -725,9 +726,9 @@ function validateMarketLeg(
   return reasons;
 }
 
-function componentComplete<T>(
-  component: { quality: PlayerAnalysisContext["state"]["wallet"]["quality"]; records: T[] | null },
-): component is { quality: PlayerAnalysisContext["state"]["wallet"]["quality"]; records: T[] } {
+function componentComplete(
+  component: PlayerAnalysisContext["state"]["wallet"] | PlayerAnalysisContext["state"]["assets"],
+): boolean {
   return (
     component.quality.availability === "COMPLETE" &&
     component.quality.coverage === "COMPLETE" &&
@@ -1380,15 +1381,19 @@ export function analyzeTradeRequest(
             request.constraints.max_capital ?? Number.POSITIVE_INFINITY,
           );
 
-    const result = simulateTakerAgainstSell({
+    const simulationInput: TakerSimulationInput = {
       snapshot: request.acquisition_market!,
       type_id: scenario.type_id,
       execution_location: scenario.origin,
       quantity: scenario.requested_quantity,
-      limit_price: scenario.acquisition.market!.limit_price,
-      order_range: scenario.acquisition.market!.order_range,
-      max_settlement_value: capitalLimit,
-    });
+      limit_price: scenario.acquisition.market.limit_price,
+      order_range: scenario.acquisition.market.order_range,
+    };
+    if (capitalLimit !== undefined) {
+      simulationInput.max_settlement_value = capitalLimit;
+    }
+
+    const result = simulateTakerAgainstSell(simulationInput);
 
     acquisitionLeg = {
       execution_mode: result.execution_mode,

@@ -1,6 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { CanonicalMarketState, MarketHistorySnapshot, EsiMarketOrder } from "@eve-trade/contracts";
+import type {
+  CanonicalMarketState,
+  CanonicalPlayerState,
+  EsiAsset,
+  EsiMarketOrder,
+  MarketHistorySnapshot,
+  TradeAnalysisRequest,
+} from "@eve-trade/contracts";
 import { fingerprintTradeScenario, parseMarketOrderRange, simulateTakerAgainstBuy, simulateTakerAgainstSell } from "../src/trade-analysis.js";
 
 const baseOrder = (overrides: Partial<EsiMarketOrder> = {}): EsiMarketOrder => ({
