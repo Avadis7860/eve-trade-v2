@@ -424,7 +424,7 @@ function adviceFor(
   prediction: ScoringResult["prediction"],
   reasons: ScoringReason[],
 ): ScoringAdvice {
-  const blockers = [...new Set(reasons.filter((item) => item.blocking).map((item) => item.code))];
+  const blockers: ScoringReason["code"][] = [...new Set(reasons.filter((item) => item.blocking).map((item) => item.code))];
   if (availability === "SCORE_UNAVAILABLE") {
     return {
       kind: "INSUFFICIENT_DATA",
