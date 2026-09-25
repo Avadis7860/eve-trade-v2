@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS opportunity_observations (
   acquisition_order_ids BIGINT[] NOT NULL DEFAULT '{}',
   disposition_order_ids BIGINT[] NOT NULL DEFAULT '{}',
   provenance JSONB NOT NULL,
-  observer JSONB,
+  observation_scope JSONB NOT NULL,
   scenario_snapshot JSONB NOT NULL,
   analysis_result JSONB NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
