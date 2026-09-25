@@ -234,3 +234,79 @@ Prediction probability, prediction quality and confidence remain separate. In pa
 Advice is a separate deterministic output with explicit reasons, blockers, limitations and evidence level. Positive simulated economics with full current execution can produce an actionable state; non-positive simulated economics produces `NO_ACTION`; partial execution produces `WATCH`; and insufficient evidence produces `INSUFFICIENT_DATA`. Advice is a decision aid, not a guarantee of realized profit.
 
 The scoring domain is pure, deterministic, testable without HTTP/ESI/PostgreSQL, and reconstructible from the input evidence plus the versioned policy.
+
+
+## Phase 8.1 — Operational opportunity pipeline
+
+Phase 8.1 closes the production orchestration gap between the persisted market evidence and the Phase 5 opportunity tracking read model.
+
+The operational market cycle is:
+
+```
+persisted/canonical market evidence
+          |
+          v
+candidate generation
+          |
+          v
+Phase 4 TradeAnalysis
+          |
+          v
+Phase 5 OpportunityObservation
+          |
+          v
+OpportunityTrackingRepository
+          |
+          +--------------------+
+          |                    |
+          v                    v
+      Phase 8 API          pipeline status
+          |
+          v
+        Phase 8 Web
+```
+
+The Phase 8.1 worker reuses the existing ingestion and market-history layers. It does not introduce a second economic model, scoring engine, execution path or credential flow.
+
+### Root cause of the empty MVP surface
+
+Before Phase 8.1, the market branch of `apps/worker/src/main.ts` stopped after market ingestion. The repository and domain contracts for trade analysis and opportunity tracking already existed, and Phase 8 correctly read persisted opportunity observations, but no operational orchestration invoked the sequence:
+
+```
+market state -> candidates -> TradeAnalysis -> OpportunityObservation -> persistence
+```
+
+The empty opportunity UI was therefore consistent with an empty tracking read model; it was not evidence that the API or Web surface needed synthetic data.
+
+### Candidate boundary
+
+Phase 8.1 generates only deterministic market-to-market candidates from a complete PUBLIC canonical market snapshot. For each type, the current policy examines the best visible sell and buy prices and creates a candidate only when the visible spread is positive and both sides have remaining volume.
+
+Incomplete or non-public evidence produces no candidate. This is an availability decision, not a numeric zero.
+
+### Operational run state
+
+Each market cycle persists an `OpportunityPipelineRun` with:
+
+- the market region and collection identity;
+- observation/completion timestamps;
+- candidate, analysis and persistence counts;
+- one explicit status: `SUCCESS`, `NO_CANDIDATES`, `INPUT_UNAVAILABLE` or `ERROR`;
+- an explicit error payload when execution fails.
+
+The API exposes the latest run state beside the opportunity list so an empty UI can distinguish:
+
+```
+no pipeline run
+!= no eligible candidates
+!= required input unavailable
+!= pipeline execution failure
+```
+
+This is diagnostic state only; it is not itself an opportunity.
+
+### Evidence and scope
+
+The worker does not invent ownership from the observing character. Public market observations remain PUBLIC and carry their existing ESI provenance. Opportunity observations are created through the Phase 5 domain factory, which preserves the Phase 4 result, market snapshot references, order identifiers, observation scope, provenance and freshness state.
+
+Missing fee or capital configuration remains explicit through the existing Phase 4 analysis contract. The worker does not replace UNKNOWN/UNAVAILABLE inputs with zero values.

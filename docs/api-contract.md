@@ -99,3 +99,19 @@ character_id
 ## Read-only boundary
 
 Phase 8 has no write endpoints and introduces no EVE credential flow. Browser clients must never call ESI directly.
+
+
+## Phase 8.1 pipeline status
+
+`GET /api/v1/opportunities` includes `data.pipeline`, which reports the latest persisted operational opportunity-pipeline run.
+
+The status is one of:
+
+- `SUCCESS`: at least one candidate was analysed and its observation was persisted;
+- `NO_CANDIDATES`: complete eligible market evidence was evaluated and produced no candidate;
+- `INPUT_UNAVAILABLE`: required market evidence was not complete/comparable for the cycle;
+- `ERROR`: the worker failed while executing the pipeline.
+
+A `null` pipeline value means that no worker pipeline run has been persisted yet.
+
+The pipeline status is diagnostic metadata. It does not synthesize an opportunity and is not a substitute for the persisted opportunity observation read model.
