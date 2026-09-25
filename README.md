@@ -141,17 +141,9 @@ The durable documentation is intentionally limited to information that remains u
 - [Development workflow](docs/development-workflow.md)
 - [License](LICENSE)
 
-The implementation roadmap and execution history live in the public GitHub Issues rather than being duplicated into one Markdown file per phase.
+## Status
 
-Start with:
-
-- [MP-001 — Master Plan](https://github.com/Avadis7860/eve-trade-v2/issues/1)
-- [OPS-001 — GitHub Actions, security and governance](https://github.com/Avadis7860/eve-trade-v2/issues/11)
-- [OPS-002 — Public credibility](https://github.com/Avadis7860/eve-trade-v2/issues/19)
-
-## Project status
-
-The repository is an actively developed engineering project. The public README describes the **product and its technical boundaries**; GitHub Issues provide the authoritative record of implementation work, validation evidence and project progression.
+EVE Trade v2 is an evolving engineering project. The README describes the **product and its technical boundaries**; implementation history and project management are intentionally kept out of the product-facing entry point.
 
 ## License
 
