@@ -159,9 +159,7 @@ test("non-public scopes require an explicit authorized scope", async () => {
       const wrongPrincipal = await fetch(
         `${baseUrl}/api/v1/opportunities?principal_scope=CHARACTER&principal_id=90000002&character_id=90000002`,
       );
-      assert.equal(wrongPrincipal.status, 200);
-      const wrongBody = (await wrongPrincipal.json()) as { data: { total: number } };
-      assert.equal(wrongBody.data.total, 0);
+      assert.equal(wrongPrincipal.status, 403);
     },
     (scope) =>
       scope.principal_scope === "CHARACTER" &&
