@@ -259,7 +259,7 @@ function playerState(overrides: {
   assets?: EsiAsset[] | null;
   assetsObservedAt?: string | null;
 } = {}): CanonicalPlayerState {
-  const walletValue = overrides.wallet ?? 1_000_000;
+  const walletValue = overrides.wallet === undefined ? 1_000_000 : overrides.wallet;
   const assets = overrides.assets ?? [];
   const walletObservedAt = overrides.walletObservedAt ?? "2026-09-25T10:00:00.000Z";
   const assetsObservedAt = overrides.assetsObservedAt ?? "2026-09-25T10:00:00.000Z";
