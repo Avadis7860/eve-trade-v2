@@ -159,12 +159,6 @@ function outcomeLabel(
 ): PredictionLabelState {
   if (outcome === null) return "UNKNOWN";
   if (outcome.status === "COMPLETELY_OBSERVED") return "POSITIVE";
-  if (
-    outcome.status === "NO_EVIDENCE" &&
-    outcome.evidence_coverage === "COMPLETE"
-  ) {
-    return "NEGATIVE";
-  }
   return "UNKNOWN";
 }
 
@@ -501,11 +495,23 @@ export function trainEmpiricalRateModel(
 
   const positiveCount = labels.filter((label) => label.value === true).length;
   const negativeCount = labels.length - positiveCount;
+  const trainingWindowStart =
+    trainingSamples
+      .map((sample) => sample.feature_observed_at)
+      .sort()[0] ?? null;
+  const trainingWindowEnd =
+    trainingSamples
+      .map((sample) => sample.feature_observed_at)
+      .sort()
+      .at(-1) ?? null;
+
   const model: PredictionModel = {
     contract_version: PREDICTION_CONTRACT_VERSION,
     model_version: modelVersion,
     target_kind: targetKind,
     dataset_id: dataset.metadata.dataset_id,
+    training_window_start: trainingWindowStart,
+    training_window_end: trainingWindowEnd,
     training_sample_count: labels.length,
     positive_sample_count: positiveCount,
     negative_sample_count: negativeCount,
@@ -539,6 +545,7 @@ export function trainEmpiricalRateModel(
 export function predictEmpiricalRate(
   model: PredictionModel | null,
   targetKind: PredictionTargetKind = "PRESENCE_AT_HORIZON",
+  sample: PredictionDatasetSample | null = null,
 ): PredictionResult {
   if (model === null) {
     return {
@@ -546,8 +553,14 @@ export function predictEmpiricalRate(
       target_kind: targetKind,
       model_version: null,
       dataset_id: null,
+      sample_id: sample?.sample_id ?? null,
+      feature_observed_at: sample?.feature_observed_at ?? null,
+      scope: sample?.scope ?? null,
       sample_size: 0,
       estimated_probability: null,
+      quality: "INSUFFICIENT_DATA",
+      confidence: "NOT_ASSESSED",
+      provenance: sample?.provenance ?? [],
     };
   }
 
@@ -556,8 +569,14 @@ export function predictEmpiricalRate(
     target_kind: model.target_kind,
     model_version: model.model_version,
     dataset_id: model.dataset_id,
+    sample_id: sample?.sample_id ?? null,
+    feature_observed_at: sample?.feature_observed_at ?? null,
+    scope: sample?.scope ?? null,
     sample_size: model.training_sample_count,
     estimated_probability: model.estimated_positive_rate,
+    quality: "TRAINING_ONLY",
+    confidence: "NOT_ASSESSED",
+    provenance: sample?.provenance ?? [],
   };
 }
 
@@ -575,6 +594,7 @@ export function evaluateEmpiricalRateModel(
       target_kind: model.target_kind,
       model_version: model.model_version,
       dataset_id: model.dataset_id,
+      evaluation_start: null,
       sample_count: 0,
       positive_count: 0,
       negative_count: 0,
