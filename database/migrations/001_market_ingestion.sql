@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS market_collections (
 );
 
 CREATE TABLE IF NOT EXISTS market_page_observations (
+  observation_id UUID PRIMARY KEY,
   collection_id UUID NOT NULL REFERENCES market_collections(collection_id) ON DELETE CASCADE,
   region_id BIGINT NOT NULL,
   page INTEGER NOT NULL CHECK (page > 0),
@@ -26,8 +27,14 @@ CREATE TABLE IF NOT EXISTS market_page_observations (
   raw_payload JSONB NOT NULL,
   headers JSONB NOT NULL,
   error JSONB,
-  PRIMARY KEY (collection_id, page)
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+CREATE INDEX IF NOT EXISTS idx_market_page_collection_page_created
+  ON market_page_observations(collection_id, page, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS idx_market_page_region_observed
+  ON market_page_observations(region_id, observed_at);
 
 CREATE TABLE IF NOT EXISTS canonical_market_states (
   collection_id UUID PRIMARY KEY REFERENCES market_collections(collection_id) ON DELETE CASCADE,
@@ -60,5 +67,5 @@ CREATE TABLE IF NOT EXISTS canonical_market_orders (
   PRIMARY KEY (collection_id, order_id)
 );
 
-CREATE INDEX IF NOT EXISTS idx_market_page_region_observed ON market_page_observations(region_id, observed_at);
-CREATE INDEX IF NOT EXISTS idx_canonical_market_region ON canonical_market_states(region_id, observed_at);
+CREATE INDEX IF NOT EXISTS idx_canonical_market_region
+  ON canonical_market_states(region_id, observed_at);
