@@ -102,11 +102,13 @@ function failedObservation(
     pageIdentity,
     "ERROR",
     provenance,
-    new Date().toISOString(),
+    esiError?.observed_at ?? new Date().toISOString(),
     [],
     null,
     {
       http_status: esiError?.status ?? null,
+      retry_count: esiError?.retry_count ?? 0,
+      headers: esiError?.headers ?? emptyHeaders(),
       error: {
         code: esiError ? `ESI_HTTP_${esiError.status}` : "ESI_PLAYER_REQUEST_FAILED",
         message: error instanceof Error ? error.message : "ESI player request failed",
@@ -237,6 +239,7 @@ export async function syncPlayerData(
       }
 
       const journalEndpoint = characterProvenance(options.characterId, endpointFor("WALLET_JOURNAL"));
+      let failedJournalPage = 1;
       try {
         const first = await client.fetchWalletJournalPage(options.characterId, 1, token);
         const pages = pageCount(first.headers);
@@ -244,6 +247,7 @@ export async function syncPlayerData(
           journalEndpoint, first.observed_at, first.data, first.data,
           { http_status: first.status, retry_count: first.retry_count, headers: first.headers }));
         for (let page = 2; page <= pages; page += 1) {
+          failedJournalPage = page;
           const result = await client.fetchWalletJournalPage(options.characterId, page, token);
           if (pageCount(result.headers) !== pages) throw new Error("ESI_PAGINATION_CHANGED");
           observations.push(makeObservation(collectionId, options.characterId, "WALLET_JOURNAL", `page:${page}`, "COMPLETE",
@@ -251,13 +255,22 @@ export async function syncPlayerData(
             { http_status: result.status, retry_count: result.retry_count, headers: result.headers }));
         }
       } catch (error) {
-        observations.push(failedObservation(collectionId, options.characterId, "WALLET_JOURNAL", "error", journalEndpoint, error));
+        observations.push(failedObservation(
+          collectionId,
+          options.characterId,
+          "WALLET_JOURNAL",
+          `page:${failedJournalPage}`,
+          journalEndpoint,
+          error,
+        ));
       }
 
       const transactionEndpoint = characterProvenance(options.characterId, endpointFor("WALLET_TRANSACTION"));
+      let failedTransactionFromId: number | undefined;
       try {
         let fromId: number | undefined;
         while (true) {
+          failedTransactionFromId = fromId;
           const result = await client.fetchWalletTransactions(options.characterId, fromId, token);
           observations.push(makeObservation(
             collectionId,
@@ -278,10 +291,18 @@ export async function syncPlayerData(
           fromId = nextId;
         }
       } catch (error) {
-        observations.push(failedObservation(collectionId, options.characterId, "WALLET_TRANSACTION", "error", transactionEndpoint, error));
+        observations.push(failedObservation(
+          collectionId,
+          options.characterId,
+          "WALLET_TRANSACTION",
+          failedTransactionFromId === undefined ? "from_id:none" : `from_id:${failedTransactionFromId}`,
+          transactionEndpoint,
+          error,
+        ));
       }
 
       const assetEndpoint = characterProvenance(options.characterId, endpointFor("ASSET"));
+      let failedAssetPage = 1;
       try {
         const first = await client.fetchAssetsPage(options.characterId, 1, token);
         const pages = pageCount(first.headers);
@@ -289,6 +310,7 @@ export async function syncPlayerData(
           assetEndpoint, first.observed_at, first.data, first.data,
           { http_status: first.status, retry_count: first.retry_count, headers: first.headers }));
         for (let page = 2; page <= pages; page += 1) {
+          failedAssetPage = page;
           const result = await client.fetchAssetsPage(options.characterId, page, token);
           if (pageCount(result.headers) !== pages) throw new Error("ESI_PAGINATION_CHANGED");
           observations.push(makeObservation(collectionId, options.characterId, "ASSET", `page:${page}`, "COMPLETE",
@@ -296,7 +318,14 @@ export async function syncPlayerData(
             { http_status: result.status, retry_count: result.retry_count, headers: result.headers }));
         }
       } catch (error) {
-        observations.push(failedObservation(collectionId, options.characterId, "ASSET", "error", assetEndpoint, error));
+        observations.push(failedObservation(
+          collectionId,
+          options.characterId,
+          "ASSET",
+          `page:${failedAssetPage}`,
+          assetEndpoint,
+          error,
+        ));
       }
 
       const orderEndpoint = characterProvenance(options.characterId, endpointFor("ACTIVE_ORDER"));
