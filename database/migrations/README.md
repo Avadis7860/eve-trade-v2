@@ -29,3 +29,11 @@ These tables are derived and replaceable. Raw Phase 1 observations remain the re
 Player current tables are derived from complete observations. A PARTIAL/ERROR/UNKNOWN component does not delete or replace the last complete canonical rows; its quality state remains explicit.
 
 Player observations retain raw payload, provenance, endpoint/page identity, observation timestamp, HTTP status, retry count and cache/rate-limit metadata. No credential field is persisted.
+
+004_opportunity_tracking.sql creates:
+- stable persisted opportunity identities;
+- append-oriented Phase 4 opportunity observations with scope and provenance;
+- independently persisted outcome evidence and status;
+- indexes for opportunity/time and type/time history.
+
+The Phase 5 tables preserve the original scenario and Phase 4 analytical payload so derived history can be reconstructed without introducing a new external source.
