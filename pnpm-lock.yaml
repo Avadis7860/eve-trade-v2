@@ -69,6 +69,10 @@ importers:
         version: 5.9.3
 
   apps/web:
+    dependencies:
+      '@eve-trade/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
     devDependencies:
       '@types/node':
         specifier: ^26.6.2
