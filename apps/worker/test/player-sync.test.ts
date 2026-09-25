@@ -107,8 +107,8 @@ test("missing credentials preserves UNKNOWN instead of manufacturing zeros", asy
   const client = {
     ...clientFor({}),
     async fetchWallet() { authenticatedCalls += 1; throw new Error("must not call"); },
-    async fetchWalletJournalPage() { authenticatedCalls += 1; throw new Error("must not call"); },
-    async fetchWalletTransactions() { authenticatedCalls += 1; throw new Error("must not call"); },
+    async fetchWalletJournalPage(_id: number, _page: number, _token: string) { authenticatedCalls += 1; throw new Error("must not call"); },
+    async fetchWalletTransactions(_id: number, _fromId: number | undefined, _token: string) { authenticatedCalls += 1; throw new Error("must not call"); },
     async fetchAssetsPage() { authenticatedCalls += 1; throw new Error("must not call"); },
     async fetchActiveOrders() { authenticatedCalls += 1; throw new Error("must not call"); },
   };
