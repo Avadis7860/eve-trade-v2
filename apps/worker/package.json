@@ -4,12 +4,13 @@
   "type": "module",
   "types": "./src/index.ts",
   "exports": { ".": { "types": "./src/index.ts", "default": "./src/index.ts" } },
-  "scripts": { "typecheck": "tsc --noEmit", "test": "tsx --test" },
+  "scripts": { "typecheck": "tsc --noEmit", "test": "tsx --test", "start": "tsx src/main.ts" },
   "dependencies": {
     "@eve-trade/contracts": "workspace:*",
     "@eve-trade/db": "workspace:*",
     "@eve-trade/domain": "workspace:*",
-    "@eve-trade/esi": "workspace:*"
+    "@eve-trade/esi": "workspace:*",
+    "pg": "^8.16.3"
   },
   "devDependencies": { "@types/node": "^24.5.2", "tsx": "^4.20.5", "typescript": "^5.9.2" }
 }
