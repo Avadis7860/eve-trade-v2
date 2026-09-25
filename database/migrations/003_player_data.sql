@@ -3,7 +3,8 @@ CREATE TABLE IF NOT EXISTS player_syncs (
   character_id BIGINT NOT NULL,
   observed_at TIMESTAMPTZ NOT NULL,
   status TEXT NOT NULL CHECK (status IN ('COMPLETE','PARTIAL','ERROR','UNKNOWN')),
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE (collection_id, character_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_player_sync_character_observed
@@ -12,7 +13,7 @@ CREATE INDEX IF NOT EXISTS idx_player_sync_character_observed
 CREATE TABLE IF NOT EXISTS player_observations (
   observation_sequence BIGINT GENERATED ALWAYS AS IDENTITY,
   observation_id UUID PRIMARY KEY,
-  collection_id UUID NOT NULL REFERENCES player_syncs(collection_id) ON DELETE CASCADE,
+  collection_id UUID NOT NULL,
   character_id BIGINT NOT NULL,
   data_kind TEXT NOT NULL CHECK (data_kind IN (
     'IDENTITY','WALLET_BALANCE','WALLET_JOURNAL','WALLET_TRANSACTION','ASSET','ACTIVE_ORDER'
@@ -27,7 +28,10 @@ CREATE TABLE IF NOT EXISTS player_observations (
   raw_payload JSONB NOT NULL,
   headers JSONB NOT NULL,
   error JSONB,
-  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  FOREIGN KEY (collection_id, character_id)
+    REFERENCES player_syncs(collection_id, character_id)
+    ON DELETE CASCADE
 );
 
 CREATE INDEX IF NOT EXISTS idx_player_observation_sync_kind
