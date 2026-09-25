@@ -128,8 +128,14 @@ export function deriveMarketTypeMetrics(
     .map(([typeId, typeOrders]) => {
       const buys = typeOrders.filter((order) => order.is_buy_order);
       const sells = typeOrders.filter((order) => !order.is_buy_order);
-      const bestBuyPrice = buys.length > 0 ? Math.max(...buys.map((order) => order.price)) : null;
-      const bestSellPrice = sells.length > 0 ? Math.min(...sells.map((order) => order.price)) : null;
+      let bestBuyPrice: number | null = null;
+      let bestSellPrice: number | null = null;
+      for (const order of buys) {
+        if (bestBuyPrice === null || order.price > bestBuyPrice) bestBuyPrice = order.price;
+      }
+      for (const order of sells) {
+        if (bestSellPrice === null || order.price < bestSellPrice) bestSellPrice = order.price;
+      }
       const bestBuyVolume =
         bestBuyPrice === null
           ? null
@@ -265,7 +271,7 @@ export function buildMarketHistory(inputs: MarketHistoryInput[]): MarketHistoryB
   const metrics: MarketSnapshotTypeMetrics[] = [];
   const depth_levels: MarketDepthLevel[] = [];
   const order_evolution: MarketOrderEvolution[] = [];
-  let previousComparable: { snapshot: MarketHistorySnapshot; orders: EsiMarketOrder[] } | null = null;
+  const previousComparableByRegion = new Map<number, { snapshot: MarketHistorySnapshot; orders: EsiMarketOrder[] }>();
 
   for (const input of ordered) {
     const source = deriveSourceMetadata(input.pages);
@@ -303,8 +309,9 @@ export function buildMarketHistory(inputs: MarketHistoryInput[]): MarketHistoryB
     }
 
     const fingerprint = fingerprintMarketState(canonical.orders);
+    const previousComparable = previousComparableByRegion.get(input.collection.region_id);
     const observationKind: MarketHistoryObservationKind =
-      previousComparable === null
+      previousComparable === undefined
         ? "INITIAL"
         : previousComparable.snapshot.state_fingerprint === fingerprint
           ? "REPEAT"
@@ -341,7 +348,7 @@ export function buildMarketHistory(inputs: MarketHistoryInput[]): MarketHistoryB
       );
     }
 
-    previousComparable = { snapshot, orders: canonical.orders };
+    previousComparableByRegion.set(input.collection.region_id, { snapshot, orders: canonical.orders });
   }
 
   return { snapshots, metrics, depth_levels, order_evolution };
