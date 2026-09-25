@@ -51,6 +51,14 @@ export function deriveSourceMetadata(pages: MarketPageObservation[]): {
   source_compatibility_date: string | null;
   source_consistency: MarketHistorySourceConsistency;
 } {
+  if (pages.length === 0) {
+    return {
+      source_last_modified: null,
+      source_compatibility_date: null,
+      source_consistency: "UNVERIFIED",
+    };
+  }
+
   const lastModifieds = new Set(
     pages
       .map((page) => page.headers.last_modified)
