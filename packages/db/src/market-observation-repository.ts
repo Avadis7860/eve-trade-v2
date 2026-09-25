@@ -22,15 +22,12 @@ export class MarketObservationRepository {
   async savePage(observation: MarketPageObservation): Promise<void> {
     await this.pool.query(
       "INSERT INTO market_page_observations " +
-      "(collection_id, region_id, page, total_pages, observed_at, status, provenance, http_status, retry_count, records, raw_payload, headers, error) " +
-      "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13) " +
-      "ON CONFLICT (collection_id, page) DO UPDATE SET total_pages=EXCLUDED.total_pages, observed_at=EXCLUDED.observed_at, " +
-      "status=EXCLUDED.status, http_status=EXCLUDED.http_status, retry_count=EXCLUDED.retry_count, records=EXCLUDED.records, " +
-      "raw_payload=EXCLUDED.raw_payload, headers=EXCLUDED.headers, error=EXCLUDED.error",
-      [observation.collection_id, observation.region_id, observation.page, observation.total_pages, observation.observed_at,
-       observation.status, JSON.stringify(observation.provenance), observation.http_status, observation.retry_count,
-       JSON.stringify(observation.records), JSON.stringify(observation.raw_payload), JSON.stringify(observation.headers),
-       observation.error ? JSON.stringify(observation.error) : null],
+      "(observation_id, collection_id, region_id, page, total_pages, observed_at, status, provenance, http_status, retry_count, records, raw_payload, headers, error) " +
+      "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",
+      [observation.observation_id, observation.collection_id, observation.region_id, observation.page, observation.total_pages,
+       observation.observed_at, observation.status, JSON.stringify(observation.provenance), observation.http_status,
+       observation.retry_count, JSON.stringify(observation.records), JSON.stringify(observation.raw_payload),
+       JSON.stringify(observation.headers), observation.error ? JSON.stringify(observation.error) : null],
     );
   }
 
@@ -68,11 +65,11 @@ export class MarketObservationRepository {
 
   async loadPages(collectionId: string): Promise<MarketPageObservation[]> {
     const result = await this.pool.query(
-      "SELECT collection_id,region_id,page,total_pages,observed_at,status,provenance,http_status,retry_count,records,raw_payload,headers,error " +
-      "FROM market_page_observations WHERE collection_id=$1 ORDER BY page", [collectionId],
+      "SELECT DISTINCT ON (page) observation_id,collection_id,region_id,page,total_pages,observed_at,status,provenance,http_status,retry_count,records,raw_payload,headers,error " +
+      "FROM market_page_observations WHERE collection_id=$1 ORDER BY page,created_at DESC", [collectionId],
     );
     return result.rows.map((row) => ({
-      collection_id: row.collection_id, region_id: row.region_id, page: row.page, total_pages: row.total_pages,
+      observation_id: row.observation_id, collection_id: row.collection_id, region_id: row.region_id, page: row.page, total_pages: row.total_pages,
       observed_at: new Date(row.observed_at).toISOString(), status: row.status, provenance: row.provenance,
       http_status: row.http_status, retry_count: row.retry_count, records: row.records, raw_payload: row.raw_payload,
       headers: row.headers, error: row.error,
@@ -115,7 +112,7 @@ export class MarketObservationRepository {
 
   private async completedPages(collectionId: string): Promise<number[]> {
     const result = await this.pool.query(
-      "SELECT page FROM market_page_observations WHERE collection_id=$1 AND status='COMPLETE' ORDER BY page", [collectionId],
+      "SELECT page FROM (SELECT DISTINCT ON (page) page,status FROM market_page_observations WHERE collection_id=$1 ORDER BY page,created_at DESC) latest WHERE status='COMPLETE' ORDER BY page", [collectionId],
     );
     return result.rows.map((row) => Number(row.page));
   }
