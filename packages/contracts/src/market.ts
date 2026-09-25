@@ -2,6 +2,20 @@ export type AvailabilityStatus = "COMPLETE" | "PARTIAL" | "ERROR" | "UNKNOWN";
 
 export type PrincipalScope = "PUBLIC" | "CHARACTER" | "CORPORATION";
 
+export type MarketOrderRange =
+  | "station"
+  | "solarsystem"
+  | "region"
+  | "1"
+  | "2"
+  | "3"
+  | "4"
+  | "5"
+  | "10"
+  | "20"
+  | "30"
+  | "40";
+
 export interface SourceProvenance {
   source_kind: "ESI";
   source_id: string;
@@ -24,7 +38,7 @@ export interface EsiMarketOrder {
   min_volume: number;
   order_id: number;
   price: number;
-  range: string;
+  range: MarketOrderRange;
   system_id: number;
   type_id: number;
   volume_remain: number;
