@@ -229,17 +229,14 @@ test("v1 policy is versioned and its fingerprint reconstructs exactly", () => {
     Object.entries(SCORING_POLICY_V1).filter(([key]) => key !== "fingerprint"),
   ) as Omit<ScoringPolicy, "fingerprint">;
   assert.equal(SCORING_POLICY_V1.policy_version, "phase-07-policy.1");
-  assert.equal(
-    SCORING_POLICY_V1.fingerprint,
-    fingerprintScoringPolicy(definition),
-  );
+  assert.equal(SCORING_POLICY_V1.fingerprint, fingerprintScoringPolicy(definition));
 });
 
 test("positive economics with complete evidence produces an available score", () => {
   const result = scoreOpportunity(input());
   assert.equal(result.availability, "AVAILABLE");
   assert.equal(result.score !== null, true);
-  assert.equal(result.advice.kind, "ACTIONABLE");
+  assert.equal(result.advice.kind, "ACTIONABLE_WITH_LIMITATION");
   assert.deepEqual(
     result.components.map((component) => component.dimension),
     ["ECONOMICS", "EXECUTABILITY", "DATA_QUALITY", "PREDICTION_SIGNAL"],
@@ -259,10 +256,7 @@ test("negative and zero simulated return remain non-actionable without fabricati
     });
     assert.equal(result.availability, "AVAILABLE");
     assert.equal(result.advice.kind, "NO_ACTION");
-    assert.equal(
-      result.reasons.some((item) => item.code === "ECONOMIC_NON_POSITIVE"),
-      true,
-    );
+    assert.equal(result.reasons.some((item) => item.code === "ECONOMIC_NON_POSITIVE"), true);
   }
 });
 
@@ -285,10 +279,7 @@ test("stale evidence is a blocking scoring condition in policy v1", () => {
   });
   assert.equal(result.availability, "SCORE_UNAVAILABLE");
   assert.equal(result.score, null);
-  assert.equal(
-    result.reasons.some((item) => item.code === "FRESHNESS_STALE" && item.blocking),
-    true,
-  );
+  assert.equal(result.reasons.some((item) => item.code === "FRESHNESS_STALE" && item.blocking), true);
 });
 
 test("unknown freshness is not converted to zero", () => {
@@ -302,6 +293,34 @@ test("unknown freshness is not converted to zero", () => {
   assert.equal(dataQuality?.status, "BLOCKED");
   assert.equal(dataQuality?.normalized_value, null);
   assert.equal(result.score, null);
+});
+
+test("absent opportunity evidence blocks scoring instead of being treated as zero", () => {
+  const value = opportunity();
+  const result = scoreOpportunity({
+    ...input(),
+    opportunity: { ...value, presence: "ABSENT" },
+  });
+  assert.equal(result.availability, "SCORE_UNAVAILABLE");
+  assert.equal(result.score, null);
+  assert.equal(result.reasons.some((item) => item.code === "OPPORTUNITY_ABSENT" && item.blocking), true);
+});
+
+test("unavailable opportunity evidence blocks scoring explicitly", () => {
+  const value = opportunity();
+  const result = scoreOpportunity({
+    ...input(),
+    opportunity: { ...value, presence: "UNAVAILABLE" },
+  });
+  assert.equal(result.availability, "SCORE_UNAVAILABLE");
+  assert.equal(result.reasons.some((item) => item.code === "OPPORTUNITY_UNAVAILABLE" && item.blocking), true);
+});
+
+test("missing optional prediction is an explicit advice limitation", () => {
+  const result = scoreOpportunity(input());
+  assert.equal(result.prediction.status, "ABSENT");
+  assert.equal(result.advice.kind, "ACTIONABLE_WITH_LIMITATION");
+  assert.equal(result.advice.limitations.includes("prediction signal is absent"), true);
 });
 
 test("partial execution lowers the score and yields WATCH", () => {
@@ -341,10 +360,7 @@ test("insufficient prediction data is explicit and optional in policy v1", () =>
   });
   assert.equal(result.prediction.status, "IGNORED");
   assert.equal(result.components[3]?.status, "NOT_USED");
-  assert.equal(
-    result.components[3]?.reasons[0]?.code,
-    "PREDICTION_INSUFFICIENT_DATA",
-  );
+  assert.equal(result.components[3]?.reasons[0]?.code, "PREDICTION_INSUFFICIENT_DATA");
   assert.equal(result.availability, "AVAILABLE");
 });
 
@@ -379,6 +395,29 @@ test("prediction scope mismatch is isolated from the score when prediction is op
   assert.equal(result.advice.kind, "ACTIONABLE_WITH_LIMITATION");
 });
 
+test("a prediction without scope cannot be used for a scoped opportunity", () => {
+  const scopedOpportunity = {
+    ...opportunity(),
+    scope: {
+      principal_scope: "CHARACTER" as const,
+      principal_id: 90000001,
+      character_id: 90000001,
+      provenance: null,
+    },
+  };
+  const scopedPrediction = prediction("MEASURED_HOLDOUT", 0.9);
+  scopedPrediction.scope = null;
+  const result = scoreOpportunity({
+    ...input(),
+    opportunity: scopedOpportunity,
+    trade_analysis: scopedOpportunity.phase4_result,
+    prediction: scopedPrediction,
+  });
+  assert.equal(result.prediction.status, "INVALID");
+  assert.equal(result.components[3]?.status, "NOT_USED");
+  assert.equal(result.advice.kind, "ACTIONABLE_WITH_LIMITATION");
+});
+
 test("a policy that requires prediction blocks scoring when prediction is absent", () => {
   const policy = policyWith({ prediction_is_optional: false });
   const result = scoreOpportunity({
@@ -399,10 +438,7 @@ test("input mismatch is a blocking integrity failure", () => {
   });
   assert.equal(result.availability, "SCORE_UNAVAILABLE");
   assert.equal(result.score, null);
-  assert.equal(
-    result.reasons.some((item) => item.code === "INPUT_MISMATCH" && item.blocking),
-    true,
-  );
+  assert.equal(result.reasons.some((item) => item.code === "INPUT_MISMATCH" && item.blocking), true);
 });
 
 test("reordered evidence arrays do not change the score or fingerprint", () => {

@@ -264,6 +264,16 @@ function dataQualityComponent(
   policy: ScoringPolicy,
   evidence: ScoringEvidenceRef[],
 ): ScoringComponent {
+  if (input.opportunity.presence === "ABSENT") {
+    return component("DATA_QUALITY", "BLOCKED", policy.weights.data_quality, null, [
+      reason("OPPORTUNITY_ABSENT", "opportunity presence is ABSENT; scoring cannot treat absence as favorable evidence", true),
+    ], evidence);
+  }
+  if (input.opportunity.presence === "UNAVAILABLE") {
+    return component("DATA_QUALITY", "BLOCKED", policy.weights.data_quality, null, [
+      reason("OPPORTUNITY_UNAVAILABLE", "opportunity presence is UNAVAILABLE; scoring evidence is incomplete", true),
+    ], evidence);
+  }
   if (input.trade_analysis.status === "DATA_UNAVAILABLE") {
     return component("DATA_QUALITY", "BLOCKED", policy.weights.data_quality, null, [
       reason("DATA_UNAVAILABLE", "upstream trade-analysis data is unavailable", true),
@@ -319,7 +329,10 @@ function predictionComponent(
     };
   }
 
-  if (prediction.scope !== null && !sameScope(input.opportunity.scope, prediction.scope)) {
+  const predictionScopeMismatch = prediction.scope === null
+    ? input.opportunity.scope.principal_scope !== "PUBLIC"
+    : !sameScope(input.opportunity.scope, prediction.scope);
+  if (predictionScopeMismatch) {
     const blocking = !policy.prediction_is_optional;
     return {
       component: component("PREDICTION_SIGNAL", blocking ? "BLOCKED" : "NOT_USED", weight, null, [
@@ -443,17 +456,23 @@ function adviceFor(
       limitations: ["full requested quantity is not currently executable"],
     };
   }
-  if (prediction.status === "IGNORED" || prediction.status === "INVALID") {
+  if (prediction.status === "ABSENT" || prediction.status === "IGNORED" || prediction.status === "INVALID") {
     return {
       kind: "ACTIONABLE_WITH_LIMITATION",
       evidence_level: "LIMITED",
       reasons: [...reasons, reason(
         prediction.status === "INVALID" ? "PREDICTION_SCOPE_MISMATCH" : "PREDICTION_NOT_USED",
-        "prediction signal is excluded from the score by policy or scope",
+        prediction.status === "ABSENT"
+          ? "prediction signal is absent and is therefore not included in the score"
+          : "prediction signal is excluded from the score by policy or scope",
         false,
       )],
       blockers,
-      limitations: ["prediction signal is not included in the score"],
+      limitations: [
+        prediction.status === "ABSENT"
+          ? "prediction signal is absent"
+          : "prediction signal is not included in the score",
+      ],
     };
   }
   return {
