@@ -186,6 +186,7 @@ The Phase 4 scenario fingerprint is evidence about one analysis execution and is
 Observation history is reconstructed per opportunity and principal scope. This prevents observations made by different characters or scopes from being implicitly merged while preserving one shared economic scenario identity.
 
 Outcome state is never inferred from the disappearance of an opportunity or from a partial transaction. Phase 5 stores explicit evidence and quantity coverage; prediction and scoring remain downstream.
+
 ## Phase 6 — Prediction
 
 Prediction consumes only persisted Phase 5 analytical records. The dataset materializer is deterministic and point-in-time correct:
