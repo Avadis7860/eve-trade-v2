@@ -73,7 +73,7 @@ The workflow also exposes `workflow_dispatch`, uses minimal `contents: read` per
 
 The repository does not require `pnpm lint` in CI yet because the workspaces do not currently expose a homogeneous lint contract.
 
-Pull requests also receive a dedicated Dependency Review check. It blocks newly introduced dependencies with high or critical known vulnerabilities; license checking is intentionally disabled for now to keep this gate focused on supply-chain vulnerability risk.
+Dependency Review is intentionally not part of the current required CI gate. The GitHub action was tested on this repository, but GitHub reported that the repository's Dependency Graph is disabled. Rather than keep a permanently failing security check or weaken it into a false-green job, OPS-001 records the control as deferred until the repository owner enables the Dependency Graph.
 
 Dependabot is configured weekly for the root npm/pnpm workspace, groups minor and patch version updates, groups security updates and limits normal version-update pull requests to three open items.
 

@@ -74,11 +74,18 @@ Migrations remain ordered lexically from:
 
 ## Dependency Review
 
-`.github/workflows/dependency-review.yml` runs only for pull requests targeting `main`.
+The repository was tested with the official GitHub Dependency Review Action using a PR-only workflow, minimal permissions and a high/critical vulnerability threshold.
 
-The check uses the official GitHub Dependency Review Action and focuses on high and critical known vulnerabilities in dependencies introduced by the pull request. License checking is currently disabled to avoid turning the security gate into an unscoped license-policy project.
+The first CI execution failed before any dependency analysis because GitHub reported:
 
-No application tests are duplicated there.
+```
+Dependency review is not supported on this repository.
+Please ensure that Dependency graph is enabled.
+```
+
+The action is therefore not kept as a required workflow in OPS-001. This is deliberate: an always-failing prerequisite is not an efficient CI gate, and masking the failure would destroy the signal.
+
+When the repository owner enables the Dependency Graph in GitHub Settings -> Advanced Security, Dependency Review can be reintroduced as a dedicated PR check without changing the application CI contract.
 
 ## Dependabot
 
