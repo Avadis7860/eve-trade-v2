@@ -59,7 +59,11 @@ P3 deliberately excludes profit/ROI/arbitrage/scoring/prediction/recommendation/
 Evaluate executable inter-regional opportunities using order-book depth, capital, fees, logistics and configurable constraints.
 
 ### Phase 5 — Opportunity tracking
-Persist detected opportunities, market evolution and outcomes so the system has a historical learning dataset.
+Persist detected opportunities as stable economic scenarios with append-oriented observations and independently evidenced outcomes.
+
+Phase 5 keeps the Phase 4 analytical fingerprint as execution evidence rather than identity. Observation history preserves market snapshots, order IDs, provenance, freshness and observation scope, and is reconstructed per opportunity/principal stream. Partial or unavailable evidence remains explicit; no execution cause or realized financial truth is inferred.
+
+The resulting dataset is designed for later outcome labeling and prediction inputs without implementing prediction, scoring or advice in this phase.
 
 ### Phase 6 — Prediction
 Train and run models against historical opportunities to estimate persistence, liquidity, spread evolution and execution-related outcomes.
