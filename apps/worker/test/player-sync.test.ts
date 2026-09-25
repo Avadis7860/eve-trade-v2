@@ -87,8 +87,8 @@ function clientFor(options: {
     async fetchWalletTransactions(id: number, fromId: number | undefined, _token: string) {
       assert.equal(id, characterId);
       return fromId === undefined
-        ? result([{ client_id: 1, date: "2026-09-25T10:00:00Z", is_buy: true, is_personal: true, journal_ref_id: 2, location_id: 3, quantity: 1, transaction_id: 2, type_id: 34, unit_price: 10 }])
-        : result([{ client_id: 1, date: "2026-09-24T10:00:00Z", is_buy: false, is_personal: true, journal_ref_id: 1, location_id: 3, quantity: 1, transaction_id: 1, type_id: 34, unit_price: 9 }]);
+        ? result([{ client_id: 1, date: "2026-09-25T10:00:00Z", is_buy: true, is_personal: true, journal_ref_id: 2, location_id: 3, quantity: 1, transaction_id: 2, type_id: 34, unit_price: 10 }], "/v1/characters/{character_id}/wallet/transactions/")
+        : result([{ client_id: 1, date: "2026-09-24T10:00:00Z", is_buy: false, is_personal: true, journal_ref_id: 1, location_id: 3, quantity: 1, transaction_id: 1, type_id: 34, unit_price: 9 }], "/v1/characters/{character_id}/wallet/transactions/");
     },
     async fetchAssetsPage(id: number, page: number, _token: string) {
       assert.equal(id, characterId);
