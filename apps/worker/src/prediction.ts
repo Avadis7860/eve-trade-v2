@@ -70,6 +70,7 @@ export async function runPredictionTrainingPipeline(
       ? evaluateEmpiricalRateModel(
           training.model,
           split.evaluation_samples,
+          config.evaluation_start,
         )
       : null;
 
