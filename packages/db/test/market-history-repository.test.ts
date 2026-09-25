@@ -105,6 +105,30 @@ test("persists and replaces derived market history atomically", { skip: !databas
     await pool.query(await readFile(migration1Path, "utf8"));
     await pool.query(await readFile(migration2Path, "utf8"));
     await pool.query("TRUNCATE market_order_evolution, market_snapshot_depth_levels, market_snapshot_type_metrics, market_history_snapshots CASCADE");
+    await pool.query(
+      "INSERT INTO market_collections " +
+      "(collection_id,region_id,observed_at,expected_pages,status,provenance,cache_last_modified,cache_consistency,error) " +
+      "VALUES " +
+      "($1,10000002,$4,1,'COMPLETE',$3,$5,'CONSISTENT',NULL)," +
+      "($2,10000002,$6,1,'COMPLETE',$3,$7,'CONSISTENT',NULL)," +
+      "($8,10000002,$9,2,'PARTIAL',$3,NULL,'UNVERIFIED',NULL)",
+      [
+        firstId,
+        secondId,
+        {
+          source_kind: "ESI",
+          source_id: "esi:markets/10000002/orders",
+          endpoint: "/markets/10000002/orders/",
+          principal_scope: "PUBLIC",
+        },
+        "2026-09-25T10:00:00.000Z",
+        "Fri, 25 Sep 2026 10:00:00 GMT",
+        "2026-09-25T10:10:00.000Z",
+        "Fri, 25 Sep 2026 10:10:00 GMT",
+        "00000000-0000-0000-0000-000000000203",
+        "2026-09-25T10:20:00.000Z",
+      ],
+    );
     const repository = new MarketHistoryRepository(pool);
 
     await repository.replace(result);
