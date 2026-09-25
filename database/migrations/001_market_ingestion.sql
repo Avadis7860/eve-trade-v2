@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS canonical_market_orders (
   price NUMERIC NOT NULL,
   volume_remain BIGINT NOT NULL,
   volume_total BIGINT NOT NULL,
-  issued TIMESTAMPTZ NOT NULL,
+  issued TEXT NOT NULL,
   duration INTEGER NOT NULL,
   min_volume BIGINT NOT NULL,
   order_range TEXT NOT NULL,
