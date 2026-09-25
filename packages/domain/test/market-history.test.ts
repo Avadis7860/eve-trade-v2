@@ -182,3 +182,28 @@ test("relative spread uses best sell as denominator", () => {
   assert.equal(metrics.spread_absolute, 10);
   assert.equal(metrics.spread_relative, 0.1);
 });
+
+
+test("ERROR and UNKNOWN collections remain explicitly non-comparable", () => {
+  for (const status of ["ERROR", "UNKNOWN"] as const) {
+    const result = buildMarketHistory([
+      {collection: collection("00000000-0000-0000-0000-0000000000" + (status === "ERROR" ? "30" : "31"), "2026-09-25T10:00:00.000Z", status), pages: []},
+    ]);
+    assert.equal(result.snapshots[0]?.status, status);
+    assert.equal(result.snapshots[0]?.comparison_eligible, false);
+    assert.equal(result.snapshots[0]?.state_fingerprint, null);
+    assert.equal(result.order_evolution.length, 0);
+  }
+});
+
+test("missing ESI freshness metadata is UNVERIFIED rather than fabricated", () => {
+  const p = page("p40", [baseOrder()]);
+  p.headers.last_modified = null;
+  p.headers.compatibility_date = null;
+  const result = buildMarketHistory([
+    {collection: collection("00000000-0000-0000-0000-000000000040", "2026-09-25T10:00:00.000Z"), pages: [p]},
+  ]);
+  assert.equal(result.snapshots[0]?.source_consistency, "UNVERIFIED");
+  assert.equal(result.snapshots[0]?.comparison_eligible, true);
+  assert.equal(result.snapshots[0]?.state_fingerprint !== null, true);
+});
