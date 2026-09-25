@@ -20,6 +20,13 @@ export type PredictionArtifactStatus =
   | "INSUFFICIENT_DATA"
   | "INVALID";
 
+export type PredictionQualityStatus =
+  | "TRAINING_ONLY"
+  | "MEASURED_HOLDOUT"
+  | "INSUFFICIENT_DATA";
+
+export type PredictionConfidenceStatus = "NOT_ASSESSED";
+
 export interface PredictionDatasetConfig {
   dataset_version: string;
   prediction_horizon_seconds: number;
@@ -95,6 +102,8 @@ export interface PredictionModel {
   model_version: string;
   target_kind: PredictionTargetKind;
   dataset_id: string;
+  training_window_start: string | null;
+  training_window_end: string | null;
   training_sample_count: number;
   positive_sample_count: number;
   negative_sample_count: number;
@@ -115,8 +124,14 @@ export interface PredictionResult {
   target_kind: PredictionTargetKind;
   model_version: string | null;
   dataset_id: string | null;
+  sample_id: string | null;
+  feature_observed_at: string | null;
+  scope: OpportunityObservationScope | null;
   sample_size: number;
   estimated_probability: number | null;
+  quality: PredictionQualityStatus;
+  confidence: PredictionConfidenceStatus;
+  provenance: SourceProvenance[];
 }
 
 export interface PredictionEvaluation {
@@ -124,6 +139,7 @@ export interface PredictionEvaluation {
   target_kind: PredictionTargetKind;
   model_version: string;
   dataset_id: string;
+  evaluation_start: string | null;
   sample_count: number;
   positive_count: number;
   negative_count: number;
