@@ -10,7 +10,7 @@ Une analyse ne peut pas être EXECUTABLE lorsque la preuve nécessaire pour éta
 
 `FRESHNESS_METADATA_MISSING` est donc un motif bloquant classé `DATA_UNAVAILABLE`. Le moteur conserve la valeur économique éventuellement calculable, mais ne transforme jamais l'absence de timestamp ou de métadonnée de fraîcheur en preuve de validité actuelle.
 
-La doctrine ESI reste de considérer les métadonnées de cache comme partie de la qualité de la donnée : `expires` indique quand une représentation mise à jour peut être disponible et `last-modified` indique la dernière mise à jour du cache. citeturn607575search0
+La doctrine ESI reste de considérer les métadonnées de cache comme partie de la qualité de la donnée : `expires` indique quand une représentation mise à jour peut être disponible et `last-modified` indique la dernière mise à jour du cache. Voir [EVE Developers — Best Practices for ESI](https://developers.eveonline.com/docs/services/esi/best-practices/).
 
 ### Preuve de non-régression
 
@@ -18,6 +18,7 @@ Le test dédié vérifie qu'un snapshot de marché complet dont `observed_at` es
 
 Le test couvre également l'absence réelle de propriété runtime, car une donnée sérialisée/legacy peut être incomplète même si le contrat TypeScript la déclare présente.
 
+La couverture inclut aussi une métadonnée d'expiration invalide côté Player et vérifie qu'un décalage temporel entre Market et Player reste acceptable lorsque chaque source respecte la policy déclarée.
 ## Incrément 02 — orchestration économique déterministe
 
 Cet incrément verrouille l'orchestration du contrat Phase 4 sans introduire d'API, de persistence d'opportunité ou d'exécution réelle.

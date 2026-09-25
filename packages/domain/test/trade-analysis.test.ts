@@ -471,6 +471,35 @@ test("missing market freshness metadata blocks executability instead of being ig
   );
 });
 
+test("invalid player freshness expiry blocks executability", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.player_context!.state.wallet.quality.fresh_until = "not-a-timestamp";
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "DATA_UNAVAILABLE");
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "FRESHNESS_METADATA_MISSING"),
+    true,
+  );
+});
+
+test("market and player timestamp skew is allowed while both remain within policy", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.player_context!.state.wallet.quality.observed_at = "2026-09-25T10:00:00.000Z";
+  input.acquisition_market!.snapshot.observed_at = "2026-09-25T10:04:00.000Z";
+  input.disposition_market!.snapshot.observed_at = "2026-09-25T10:04:30.000Z";
+  input.acquisition_market!.market.observed_at = "2026-09-25T10:04:00.000Z";
+  input.disposition_market!.market.observed_at = "2026-09-25T10:04:30.000Z";
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "EXECUTABLE");
+  assert.equal(result.status_reasons.some((r) => r.code === "FRESHNESS_EXCEEDED"), false);
+});
+
 test("future market data is explicitly rejected", async () => {
   const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
   const result = analyzeTradeRequest(request({
