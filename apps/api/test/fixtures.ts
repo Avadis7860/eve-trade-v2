@@ -136,12 +136,17 @@ export function publicObservation(
         type_id: scenario.type_id,
         requested_quantity: scenario.requested_quantity,
         acquisition_source: "MARKET",
-        acquisition_market: {
-          execution_mode: scenario.acquisition.market.execution_mode,
-          execution_location: scenario.acquisition.market.execution_location,
-          limit_price: scenario.acquisition.market.limit_price,
-          order_range: scenario.acquisition.market.order_range,
-        },
+        acquisition_market: (() => {
+          if (scenario.acquisition.source !== "MARKET") {
+            throw new Error("fixture acquisition must use MARKET source");
+          }
+          return {
+            execution_mode: scenario.acquisition.market.execution_mode,
+            execution_location: scenario.acquisition.market.execution_location,
+            limit_price: scenario.acquisition.market.limit_price,
+            order_range: scenario.acquisition.market.order_range,
+          };
+        })(),
         disposition_market: {
           execution_mode: scenario.disposition.market.execution_mode,
           execution_location: scenario.disposition.market.execution_location,
