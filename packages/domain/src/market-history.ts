@@ -18,7 +18,6 @@ export const MARKET_HISTORY_CONTRACT_VERSION = 1;
 
 const COMPARABLE_FIELDS: MarketOrderComparableField[] = [
   "duration",
-  "escrow",
   "is_buy_order",
   "issued",
   "location_id",
