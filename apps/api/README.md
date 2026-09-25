@@ -20,6 +20,14 @@ Run locally with:
 pnpm --filter @eve-trade/api dev
 ```
 
+## Codespaces
+
+The repository Dev Container provides PostgreSQL 16 and the shared DATABASE_URL for the workspace.
+
+The Codespaces bootstrap starts the API on port 3000 and validates PostgreSQL connectivity, migrations, GET /health, and the CORS contract used by the Web app.
+
+The API starts without ESI_ACCESS_TOKEN, PLAYER_CHARACTER_ID, or any other EVE credential.
+
 ## Read contract
 
 Version: `phase-08.1`

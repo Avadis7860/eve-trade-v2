@@ -4,6 +4,8 @@ Database schema history for EVE Trade v2.
 
 Apply SQL migrations in lexical order.
 
+The Codespaces bootstrap applies every database/migrations/*.sql file in lexical order with psql and ON_ERROR_STOP. The existing migrations are idempotent DDL, so rerunning the bootstrap does not need a separate migration ledger or development-only schema.
+
 001_market_ingestion.sql creates:
 - collection/checkpoint metadata;
 - raw paginated market observations;

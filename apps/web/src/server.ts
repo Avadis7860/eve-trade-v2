@@ -5,6 +5,7 @@ import { createServer } from "node:http";
 const root = join(process.cwd(), "public");
 const port = Number(process.env.PORT ?? "3001");
 const host = process.env.HOST ?? "0.0.0.0";
+const apiBaseUrl = process.env.API_BASE_URL ?? "";
 
 if (!Number.isInteger(port) || port <= 0 || port > 65535) {
   throw new Error("PORT must be a valid TCP port");
@@ -24,7 +25,22 @@ const server = createServer((request, response) => {
     return;
   }
 
-  const requested = normalize(request.url === "/" ? "/index.html" : request.url ?? "/");
+  const requestedUrl = new URL(request.url ?? "/", "http://eve-trade.local");
+
+  if (requestedUrl.pathname === "/__runtime-config.js") {
+    response.writeHead(200, {
+      "content-type": "text/javascript; charset=utf-8",
+      "cache-control": "no-store",
+    });
+    response.end(
+      `window.EVE_TRADE_API_BASE = ${JSON.stringify(apiBaseUrl)};\n`,
+    );
+    return;
+  }
+
+  const requested = normalize(
+    requestedUrl.pathname === "/" ? "/index.html" : requestedUrl.pathname,
+  );
   if (requested.includes("..")) {
     response.writeHead(400, { "content-type": "text/plain; charset=utf-8" });
     response.end("Invalid path");

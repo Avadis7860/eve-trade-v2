@@ -1,0 +1,22 @@
+{
+  "name": "EVE Trade v2 — Codespaces",
+  "dockerComposeFile": "compose.yaml",
+  "service": "workspace",
+  "workspaceFolder": "/workspaces/eve-trade-v2",
+  "remoteUser": "node",
+  "shutdownAction": "stopCompose",
+  "forwardPorts": [3000, 3001],
+  "portsAttributes": {
+    "3000": {
+      "label": "EVE Trade API",
+      "protocol": "http",
+      "onAutoForward": "notify"
+    },
+    "3001": {
+      "label": "EVE Trade Web",
+      "protocol": "http",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "postCreateCommand": "pnpm install --frozen-lockfile"
+}

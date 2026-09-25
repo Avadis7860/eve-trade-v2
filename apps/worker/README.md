@@ -4,6 +4,14 @@ Background processing entry point.
 
 The worker can run market ingestion or a character-scoped Player Data synchronization without requiring the web application.
 
+## Codespaces
+
+The standard Codespaces bootstrap does not launch the worker and does not call ESI.
+
+Start the worker explicitly only when the required credentials and business inputs are available:
+```bash
+pnpm --filter @eve-trade/worker start
+```
 ## Market mode
 
 Set:

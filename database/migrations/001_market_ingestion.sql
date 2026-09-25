@@ -64,7 +64,6 @@ CREATE TABLE IF NOT EXISTS canonical_market_orders (
   duration INTEGER NOT NULL,
   min_volume BIGINT NOT NULL,
   order_range TEXT NOT NULL,
-  escrow NUMERIC NOT NULL,
   PRIMARY KEY (collection_id, order_id)
 );
 

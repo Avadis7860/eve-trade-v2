@@ -19,6 +19,16 @@ pnpm --filter @eve-trade/web dev
 
 The browser does not call ESI and does not contain EVE credentials. It only consumes the versioned API.
 
+## Codespaces
+
+The Codespaces bootstrap starts the Web on port 3001.
+
+Forwarded Codespaces ports use a Codespace-specific HTTPS domain rather than the developer's local localhost. The Web therefore receives API_BASE_URL at startup and exposes it through /__runtime-config.js before loading app.js.
+
+This keeps the forwarded API address out of hardcoded client configuration. The browser calls only the API; it never calls ESI and never contains EVE credentials.
+
+Use the forwarded Web port for the product shell. The API port can be opened separately for GET /health.
+
 ## Product flow
 
 The first shell is:
