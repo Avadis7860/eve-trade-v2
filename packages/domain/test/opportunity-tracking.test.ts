@@ -5,6 +5,7 @@ import {
   assessOpportunityOutcome,
   buildOpportunityIdentity,
   createOpportunityObservation,
+  notObservedOpportunityOutcome,
   reconstructOpportunityHistory,
 } from "../src/opportunity-tracking.js";
 
@@ -115,13 +116,39 @@ function result(
   };
 }
 
-test("opportunity identity is stable across as-of/snapshot/player observer changes", () => {
-  const a = buildOpportunityIdentity(scenario);
-  const bScenario = structuredClone(scenario);
-  const aResult = result("phase4-a", 235);
-  const b = buildOpportunityIdentity(bScenario);
-  assert.equal(a.opportunity_id, b.opportunity_id);
-  assert.notEqual(aResult.scenario_fingerprint, a.opportunity_id);
+test("opportunity identity is stable while observations vary by snapshot, time, and observer", () => {
+  const first = createOpportunityObservation({
+    observed_at: "2026-09-25T10:00:00Z",
+    scenario,
+    phase4_result: result("phase4-a", 235),
+    presence: "PRESENT",
+    observer_character_id: 90000001,
+    observer_provenance: {
+      source_kind: "ESI",
+      source_id: "esi:character/90000001",
+      endpoint: "/characters/90000001/",
+      principal_scope: "CHARACTER",
+      principal_id: 90000001,
+    },
+  });
+  const second = createOpportunityObservation({
+    observed_at: "2026-09-25T10:05:00Z",
+    scenario,
+    phase4_result: result("phase4-b", 240),
+    presence: "PRESENT",
+    observer_character_id: 90000002,
+    observer_provenance: {
+      source_kind: "ESI",
+      source_id: "esi:character/90000002",
+      endpoint: "/characters/90000002/",
+      principal_scope: "CHARACTER",
+      principal_id: 90000002,
+    },
+  });
+
+  assert.equal(first.opportunity_id, second.opportunity_id);
+  assert.notEqual(first.observation_id, second.observation_id);
+  assert.equal(first.opportunity_id, buildOpportunityIdentity(scenario).opportunity_id);
 });
 
 test("existing-inventory player-specific asset ids do not redefine the opportunity", () => {
@@ -174,9 +201,32 @@ test("observation ids are idempotent and provenance keeps observer separate", ()
   });
   assert.equal(one.observation_id, two.observation_id);
   assert.equal(one.opportunity_id, two.opportunity_id);
-  assert.equal(one.observer?.character_id, 90000001);
+  assert.equal(one.scope.character_id, 90000001);
+  assert.equal(one.scope.principal_id, 90000001);
+  assert.equal(one.scope.principal_scope, "CHARACTER");
   assert.equal(one.provenance.some((p) => p.principal_scope === "PUBLIC"), true);
   assert.equal(one.provenance.some((p) => p.principal_scope === "CHARACTER"), true);
+});
+
+test("history does not merge different observing characters", () => {
+  const one = createOpportunityObservation({
+    observed_at: "2026-09-25T10:00:00Z",
+    scenario,
+    phase4_result: result("scope-1", 100),
+    presence: "PRESENT",
+    observer_character_id: 90000001,
+  });
+  const two = createOpportunityObservation({
+    observed_at: "2026-09-25T10:05:00Z",
+    scenario,
+    phase4_result: result("scope-2", 200),
+    presence: "PRESENT",
+    observer_character_id: 90000002,
+  });
+
+  const history = reconstructOpportunityHistory([two, one]);
+  assert.deepEqual(history.map((event) => event.kind), ["INITIAL", "INITIAL"]);
+  assert.notEqual(history[0]?.scope.principal_id, history[1]?.scope.principal_id);
 });
 
 test("freshness is preserved instead of normalized to a healthy value", () => {
