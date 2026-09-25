@@ -34,9 +34,6 @@ CREATE TABLE IF NOT EXISTS opportunity_observations (
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_opportunity_observation_fingerprint
-  ON opportunity_observations(opportunity_id, observed_at, phase4_scenario_fingerprint, presence);
-
 CREATE INDEX IF NOT EXISTS idx_opportunity_observation_history
   ON opportunity_observations(opportunity_id, observed_at, observation_id);
 
@@ -57,9 +54,6 @@ CREATE TABLE IF NOT EXISTS opportunity_outcomes (
   observed_subresult JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS uq_opportunity_outcome_observed
-  ON opportunity_outcomes(opportunity_id, observed_at, outcome_id);
 
 CREATE INDEX IF NOT EXISTS idx_opportunity_outcome_history
   ON opportunity_outcomes(opportunity_id, observed_at, outcome_id);
