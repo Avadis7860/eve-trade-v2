@@ -97,3 +97,53 @@ test("common transport honors Retry-After and 420 reset semantics", async () => 
   assert.deepEqual(delays, [2000, 3000]);
   assert.equal(result.retry_count, 2);
 });
+
+
+test("default compatibility date is stable instead of depending on current wall-clock time", async () => {
+  let requestHeaders: Headers | null = null;
+  const transport = new FakeTransport((_url, headers) => {
+    requestHeaders = headers;
+    return response(200, { ok: true });
+  });
+  const http = new EsiHttpClient({
+    userAgent: "EVE-Trade-v2/test",
+    transport,
+    now: () => new Date("2030-01-10T12:00:00.000Z"),
+  });
+  await http.getJson("/status/");
+  assert.equal(requestHeaders?.get("X-Compatibility-Date"), "2026-09-25");
+});
+
+test("terminal ESI errors preserve response metadata and accumulated retry count", async () => {
+  const delays: number[] = [];
+  const transport = new FakeTransport(() => response(429, { error: "rate limited" }, {
+    "Retry-After": "2",
+    "X-Ratelimit-Group": "test-group",
+    "X-Ratelimit-Remaining": "1",
+    "X-ESI-Error-Limit-Remain": "98",
+    "X-ESI-Error-Limit-Reset": "12",
+  }));
+  const http = new EsiHttpClient({
+    userAgent: "EVE-Trade-v2/test",
+    transport,
+    maxRetries: 1,
+    sleep: async (ms) => { delays.push(ms); },
+  });
+  await assert.rejects(() => http.getJson("/status/"), (error: unknown) => {
+    assert.ok(error instanceof EsiHttpError);
+    assert.equal(error.status, 429);
+    assert.equal(error.retryable, true);
+    assert.equal(error.retryAfterSeconds, 2);
+    assert.equal(error.retry_count, 1);
+    assert.equal(error.headers.retry_after, "2");
+    assert.equal(error.headers.ratelimit_group, "test-group");
+    assert.equal(error.headers.ratelimit_remaining, "1");
+    assert.equal(error.headers.error_limit_remain, "98");
+    assert.equal(error.headers.error_limit_reset, "12");
+    assert.equal(error.endpoint, "/status/");
+    assert.ok(error.request_id);
+    assert.ok(error.observed_at !== null);
+    return true;
+  });
+  assert.deepEqual(delays, [2000]);
+});
