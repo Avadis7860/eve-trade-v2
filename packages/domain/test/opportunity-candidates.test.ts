@@ -76,7 +76,8 @@ test("incomplete market evidence yields no candidate", () => {
       market([
         order({ order_id: 10, price: 100 }),
         order({ order_id: 20, is_buy_order: true, price: 120 }),
-      ], "PARTIAL").length,
+      ], "PARTIAL"),
+    ).length,
     0,
   );
 });
