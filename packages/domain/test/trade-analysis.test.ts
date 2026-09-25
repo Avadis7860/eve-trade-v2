@@ -860,3 +860,66 @@ test("broker fee may remain unknown for immediate taker analysis", async () => {
   assert.equal(result.status, "EXECUTABLE");
   assert.equal(result.economic_result.fees_total, 33.75);
 });
+
+test("partial sell-side depth is reported as partial without fabricating the missing quantity", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.acquisition_market!.market.orders = [
+    baseOrder({ order_id: 1, price: 100, volume_remain: 2 }),
+  ];
+  input.scenario.acquisition.market.quantity = 5;
+  input.scenario.requested_quantity = 5;
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.acquisition_leg.filled_quantity, 2);
+  assert.equal(result.acquisition_leg.remaining_quantity, 3);
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "DEPTH_EXHAUSTED"),
+    true,
+  );
+  assert.equal(result.economic_result.gross_result, null);
+});
+
+test("partial buy-side depth is reported as partial without fabricating the missing quantity", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.disposition_market!.market.orders = [
+    baseOrder({
+      order_id: 2,
+      is_buy_order: true,
+      price: 90,
+      volume_remain: 2,
+      location_id: 60003761,
+    }),
+  ];
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.disposition_leg.filled_quantity, 2);
+  assert.equal(result.disposition_leg.remaining_quantity, 3);
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "DEPTH_EXHAUSTED"),
+    true,
+  );
+  assert.equal(result.economic_result.disposition_proceeds, 180);
+});
+
+test("escrow remains separate when its value is unavailable", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    capital_policy: {
+      source: "WALLET_BALANCE",
+      deployable_capital: null,
+      escrow: null,
+      escrow_is_separate: true,
+    },
+  }));
+
+  assert.equal(result.status, "EXECUTABLE");
+  assert.equal(result.capital_context.wallet_cash, 1_000_000);
+  assert.equal(result.capital_context.committed_escrow, null);
+  assert.equal(result.capital_context.deployable_capital, 1_000_000);
+});
