@@ -500,15 +500,14 @@ function validLocation(location: MarketLocation): boolean {
 
 function validFreshnessPolicy(policy: TradeAnalysisRequest["analysis_context"]["freshness_policy"]): boolean {
   return (
-    policy.max_market_age_seconds === null ||
-    (Number.isFinite(policy.max_market_age_seconds) &&
-      Number.isInteger(policy.max_market_age_seconds) &&
-      policy.max_market_age_seconds >= 0)
-  ) &&
-  (policy.max_player_age_seconds === null ||
-    (Number.isFinite(policy.max_player_age_seconds) &&
-      Number.isInteger(policy.max_player_age_seconds) &&
-      policy.max_player_age_seconds >= 0))
+    (policy.max_market_age_seconds === null ||
+      (Number.isFinite(policy.max_market_age_seconds) &&
+        Number.isInteger(policy.max_market_age_seconds) &&
+        policy.max_market_age_seconds >= 0)) &&
+    (policy.max_player_age_seconds === null ||
+      (Number.isFinite(policy.max_player_age_seconds) &&
+        Number.isInteger(policy.max_player_age_seconds) &&
+        policy.max_player_age_seconds >= 0))
   );
 }
 
