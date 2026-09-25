@@ -4,7 +4,6 @@ import { EsiMarketClient, type EsiTransport } from "../src/client.js";
 
 const order = (id: number) => ({
   duration: 90,
-  escrow: 0,
   is_buy_order: false,
   issued: "2026-09-25T10:00:00Z",
   location_id: 60003760,
