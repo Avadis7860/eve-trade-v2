@@ -1,84 +1,150 @@
 # EVE Trade v2
 
-EVE Trade v2 is a market-intelligence and trading-analysis platform for EVE Online.
+[![CI](https://github.com/Avadis7860/eve-trade-v2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Avadis7860/eve-trade-v2/actions/workflows/ci.yml)
 
-Target product pipeline:
+**EVE Trade v2** is a market-intelligence and trading-analysis platform for EVE Online.
 
-EVE / ESI -> ingestion -> historical observations -> canonical market and player state -> trade analysis -> opportunity history -> prediction -> recommendation -> web interface.
+Its purpose is to turn external EVE market and player observations into **reconstructible data, deterministic analysis and traceable intelligence**.
 
-## Phase 1
+## Product
 
-Phase 1 implements the first real market data path:
+The product pipeline is:
 
-ESI market orders -> paginated raw observations -> PostgreSQL persistence -> deterministic canonical market state -> reconstructible market history.
+```
+EVE / ESI
+   ↓
+observations
+   ↓
+canonical market & player state
+   ↓
+historical market intelligence
+   ↓
+trade analysis
+   ↓
+opportunity tracking
+   ↓
+prediction
+   ↓
+future scoring / advice
+```
 
-The ingestion boundary preserves provenance, observation timestamps, HTTP/cache/rate-limit metadata and raw payloads. Incomplete or errored collections are never represented as an empty valid market.
+The core design principle is that the system must preserve the difference between **what was observed**, **what was derived**, and **what remains unknown**.
 
-## Phase 2
+### Market intelligence
 
-Phase 2 reconstructs historical market state exclusively from persisted Phase 1 observations. Derived history remains rebuildable and never replaces the raw observation source.
+EVE Trade collects regional market observations from ESI and preserves the evidence needed to reconstruct them later.
 
-## Phase 3 — Player data
+The market layer keeps source provenance, observation time and collection quality explicit. Historical market state is derived from persisted observations rather than replacing them.
 
-Phase 3 adds a character-scoped Player Data foundation:
+### Player intelligence
 
-character principal -> authenticated ESI -> raw Player observations -> canonical Player state.
+Authenticated Player data is explicitly scoped to a character.
 
-The initial scope covers character identity, wallet balance, wallet journal, wallet transactions, assets and active market orders. Public market observations remain PUBLIC; authenticated Player observations are CHARACTER-scoped. Unknown, partial and errored data remain explicit, and raw observations retain provenance and observation timestamps.
+Market observations remain public data, while wallet, transactions, assets and active orders remain character-scoped observations. Availability, coverage, health and freshness are tracked separately so degraded data is not silently turned into a valid empty state.
 
-P3 does not implement trade profitability, ROI, recommendations, allocation or order execution.
+### Trading analysis
 
-## Phase 4 — Trade analysis
+The analysis layer evaluates trading scenarios against observed market and player state.
 
-Phase 4 provides deterministic market trade analysis over persisted market and player contracts. It supports taker simulations against observed sell and buy liquidity, explicit capital and fee context, logistics completeness, freshness validation and reproducible economic results.
+It supports deterministic economic simulation with order-book depth, capital, escrow, fees and logistics constraints while remaining **simulation-only**.
 
-Phase 4 remains simulation-only: it does not place, modify or cancel orders and does not claim realized P&L.
+The project does not place, modify or cancel EVE orders.
 
-## Repository layout
+### Opportunity tracking
 
-- apps/web — user interface
-- apps/api — application API boundary
-- apps/worker — background processing
-- packages/contracts — stable shared contracts
-- packages/domain — pure business rules
-- packages/esi — ESI transport and typed clients
-- packages/db — PostgreSQL persistence
-- database/migrations — schema history
-- docs — architecture, master plan and development rules
+Detected opportunities can be persisted as time-bound observations with their market evidence and analytical context.
 
-## Local validation
+Opportunity identity remains separate from individual market orders and from the character that observed the opportunity. Later outcome evidence is kept separate from the original simulation.
 
-Install dependencies with the pnpm version declared by `packageManager`, apply migrations in lexical order, then run:
+### Prediction
 
+The prediction layer consumes persisted historical observations and outcomes through a deterministic dataset boundary.
+
+The first baseline is deliberately transparent and point-in-time constrained. When historical evidence is insufficient, the system can return `INSUFFICIENT_DATA` rather than manufacture a numerical prediction.
+
+## What the system does not claim
+
+The current repository does **not** claim:
+
+- real order execution;
+- guaranteed profitability;
+- realized P&L reconstruction beyond what available evidence can establish;
+- production-calibrated prediction quality;
+- a completed scoring or recommendation engine;
+- a deployed public service.
+
+These are either future product capabilities or require evidence that is not yet available.
+
+## Engineering characteristics
+
+EVE Trade v2 is implemented as a pnpm TypeScript monorepo:
+
+- `apps/worker` — background ingestion and analytical processing
+- `apps/api` — application API boundary
+- `apps/web` — presentation layer
+- `packages/contracts` — shared contracts
+- `packages/domain` — deterministic business rules
+- `packages/esi` — ESI transport and typed clients
+- `packages/db` — PostgreSQL persistence
+- `database/migrations` — schema history
+- `docs` — durable architecture and engineering documentation
+
+The project favors explicit contracts, deterministic reconstruction, provenance and reproducibility over opaque fallbacks.
+
+## Reproducibility
+
+Requirements:
+
+- Node.js 24
+- the pnpm version declared by `packageManager`
+- PostgreSQL 16 for integration tests
+
+Install dependencies:
+
+```bash
+pnpm install --frozen-lockfile
+```
+
+Validate the repository:
+
+```bash
 pnpm typecheck
 pnpm test
+```
 
-A PostgreSQL instance is required for persistence validation. Player synchronization can be exercised from the worker entry point with `PLAYER_CHARACTER_ID` and an injected `ESI_ACCESS_TOKEN`; the token is not written to Player observations. Set `ESI_COMPATIBILITY_DATE` to override the pinned P3 ESI compatibility date after an explicit compatibility review.
+The validation suite is designed without live EVE credentials or live ESI dependency.
 
-## CI and repository automation
+## Quality and security
 
-The repository CI is defined in `.github/workflows/ci.yml`.
+The public repository currently provides:
 
-On pull requests targeting `main`, and on pushes to `main`, CI runs one validation job with:
+- GitHub Actions CI for pull requests and `main`;
+- PostgreSQL-backed integration validation;
+- locked dependency installation;
+- TypeScript typechecking;
+- the full test suite;
+- minimal workflow permissions;
+- immutable workflow action references;
+- concurrency control for obsolete runs;
+- weekly Dependabot maintenance;
+- CodeQL analysis.
 
-- Ubuntu latest
-- Node.js 24
-- the exact pnpm version declared by `packageManager`
-- PostgreSQL 16
-- `pnpm install --frozen-lockfile`
-- `pnpm typecheck`
-- `pnpm test`
+Dependency Review is present as a repository workflow, with its enforcement dependent on GitHub's Dependency Graph configuration.
 
-The workflow also exposes `workflow_dispatch`, uses minimal `contents: read` permissions, cancels obsolete runs for the same PR/ref, enforces a 10-minute job timeout and caches the pnpm store from `pnpm-lock.yaml`.
+The visible CI state is intentionally based on actual repository controls rather than decorative badges or claims.
 
-The repository does not require `pnpm lint` in CI yet because the workspaces do not currently expose a homogeneous lint contract.
+## Documentation
 
-Dependency Review is intentionally not part of the current required CI gate. The GitHub action was tested on this repository, but GitHub reported that the repository's Dependency Graph is disabled. Rather than keep a permanently failing security check or weaken it into a false-green job, OPS-001 records the control as deferred until the repository owner enables the Dependency Graph.
+The durable documentation is intentionally limited to information that remains useful beyond a single implementation chantier:
 
-Dependabot is configured weekly for the root npm/pnpm workspace, groups minor and patch version updates, groups security updates and limits normal version-update pull requests to three open items.
+- [Architecture](docs/architecture.md)
+- [Development workflow](docs/development-workflow.md)
+- [License](LICENSE)
 
-CI does not call ESI and does not require EVE credentials or application secrets.
+## Status
 
-CodeQL is intentionally not enabled yet; it is a later security-control decision once the deployed/API surface justifies the additional analysis.
+EVE Trade v2 is an evolving engineering project. The README describes the **product and its technical boundaries**; implementation history and project management are intentionally kept out of the product-facing entry point.
 
-Repository administration still needs owner-side verification for branch protection and required checks. No deployment, release or application scheduler is part of the CI foundation.
+## License
+
+Released under the [MIT License](LICENSE).
