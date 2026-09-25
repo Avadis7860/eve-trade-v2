@@ -77,6 +77,8 @@ Aucune valeur inconnue de frais n'est convertie en `0`.
 
 La configuration `broker_fee_rate` reste conservée pour les extensions maker futures ; les modes maker ne sont pas exécutables dans cet incrément.
 
+De même, une erreur de mode d'exécution, une contrainte bloquante ou une provenance de marché incompatible empêche la simulation du leg concerné : le moteur ne produit pas de fills taker « de secours » à partir d'un scénario qui ne les autorise pas.
+
 ### Inventaire et cost basis
 
 `EXISTING_INVENTORY` peut être utilisé sans inventer de coût historique.

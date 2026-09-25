@@ -1413,7 +1413,18 @@ export function analyzeTradeRequest(
   let dispositionLeg: TradeLegResult;
   let dispositionSettlement: number | null = null;
 
-  if (validationReasons.some((item) => item.code === "SCENARIO_INVALID" || item.code === "MARKET_UNAVAILABLE")) {
+  if (
+    validationReasons.some((item) =>
+      [
+        "SCENARIO_INVALID",
+        "MARKET_UNAVAILABLE",
+        "MARKET_NOT_COMPARABLE",
+        "MARKET_SCOPE_INVALID",
+        "MAKER_MODE_UNSUPPORTED",
+        "CONSTRAINT_VIOLATION",
+      ].includes(item.code),
+    )
+  ) {
     acquisitionLeg = fallbackLeg(
       acquisitionMode,
       scenario.requested_quantity,
@@ -1479,7 +1490,14 @@ export function analyzeTradeRequest(
   if (
     !request.disposition_market ||
     validationReasons.some((item) =>
-      ["SCENARIO_INVALID", "MARKET_UNAVAILABLE", "MARKET_NOT_COMPARABLE", "MARKET_SCOPE_INVALID"].includes(item.code),
+      [
+        "SCENARIO_INVALID",
+        "MARKET_UNAVAILABLE",
+        "MARKET_NOT_COMPARABLE",
+        "MARKET_SCOPE_INVALID",
+        "MAKER_MODE_UNSUPPORTED",
+        "CONSTRAINT_VIOLATION",
+      ].includes(item.code),
     )
   ) {
     dispositionLeg = fallbackLeg(

@@ -678,7 +678,41 @@ test("maker modes are reserved and never executable", async () => {
   }));
 
   assert.equal(result.status, "NOT_EXECUTABLE");
+  assert.equal(result.acquisition_leg.filled_quantity, 0);
+  assert.equal(result.acquisition_leg.simulated_fills.length, 0);
   assert.equal(result.status_reasons.some((r) => r.code === "MAKER_MODE_UNSUPPORTED"), true);
+});
+
+test("maker disposition mode is not silently simulated as a taker sale", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.scenario.disposition.market.execution_mode = "MAKER_SELL";
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "NOT_EXECUTABLE");
+  assert.equal(result.disposition_leg.filled_quantity, 0);
+  assert.equal(result.disposition_leg.simulated_fills.length, 0);
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "MAKER_MODE_UNSUPPORTED"),
+    true,
+  );
+});
+
+test("character-scoped market evidence cannot be simulated as public liquidity", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  Reflect.set(input.acquisition_market!.market.provenance, "principal_scope", "CHARACTER");
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "NOT_EXECUTABLE");
+  assert.equal(result.acquisition_leg.filled_quantity, 0);
+  assert.equal(result.acquisition_leg.simulated_fills.length, 0);
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "MARKET_SCOPE_INVALID"),
+    true,
+  );
 });
 
 test("max capital constraint is enforced independently of wallet balance", async () => {
