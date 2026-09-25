@@ -20,7 +20,7 @@ const order = (id: number) => ({
 });
 
 const page = (n: number, records: ReturnType<typeof order>[], lastModified = "Fri, 25 Sep 2026 10:00:00 GMT"): MarketPageObservation => ({
-  collection_id: "c1",
+  observation_id: `obs-${n}`,\n  collection_id: "c1",
   region_id: 10000002,
   page: n,
   total_pages: 2,
@@ -47,7 +47,7 @@ const page = (n: number, records: ReturnType<typeof order>[], lastModified = "Fr
     ratelimit_used: null,
     retry_after: null,
     error_limit_remain: null,
-    error_limit_reset: null,
+    error_limit_reset: null,\n    compatibility_date: "2026-09-25",
   },
   error: null,
 });
