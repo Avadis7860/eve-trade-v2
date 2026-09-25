@@ -9,8 +9,8 @@ import type {
   PredictionQualityStatus,
   PredictionResult,
 } from "./prediction.js";
+import type { SourceProvenance } from "./market.js";
 import type {
-  SourceProvenance,
   TradeAnalysisResult,
   TradeAnalysisStatus,
 } from "./trade-analysis.js";
