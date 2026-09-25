@@ -52,7 +52,7 @@ test("GET /api/v1/opportunities exposes deterministic summaries", async () => {
     assert.equal(body.contract_version, "phase-08.1");
     assert.equal(body.data.total, 1);
     assert.equal(body.data.items[0]?.score.value, 100);
-    assert.equal(body.data.items[0]?.advice.kind, "ACTIONABLE");
+    assert.equal(body.data.items[0]?.advice.kind, "ACTIONABLE_WITH_LIMITATION");
   });
 });
 
