@@ -33,7 +33,7 @@ const server = createServer((request, response) => {
       "cache-control": "no-store",
     });
     response.end(
-      `window.EVE_TRADE_API_BASE = ${JSON.stringify(apiBaseUrl)};\\n`,
+      `window.EVE_TRADE_API_BASE = ${JSON.stringify(apiBaseUrl)};\n`,
     );
     return;
   }
