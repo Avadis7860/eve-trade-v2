@@ -47,4 +47,4 @@ Install dependencies with pnpm 10.15+, apply migrations in lexical order, then r
 pnpm typecheck
 pnpm test
 
-A PostgreSQL instance is required for persistence validation. Player synchronization can be exercised from the worker entry point with `PLAYER_CHARACTER_ID` and an injected `ESI_ACCESS_TOKEN`; the token is not written to Player observations.
+A PostgreSQL instance is required for persistence validation. Player synchronization can be exercised from the worker entry point with `PLAYER_CHARACTER_ID` and an injected `ESI_ACCESS_TOKEN`; the token is not written to Player observations. Set `ESI_COMPATIBILITY_DATE` to override the pinned P3 ESI compatibility date after an explicit compatibility review.
