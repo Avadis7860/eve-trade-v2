@@ -228,9 +228,11 @@ function finalize(
   const filled = input.quantity - remaining;
   const settlementValue = filled > 0 ? filled * input.limit_price : null;
   const reasons: TradeAnalysisReason[] = [];
-  if (remaining > 0) reasons.push(reason("DEPTH_EXHAUSTED", "visible compatible liquidity cannot fully satisfy the requested quantity", true));
   if (unknownRangeCount > 0 && remaining > 0) {
     reasons.push(reason("RANGE_UNKNOWN", "some candidate orders cannot be classified without their jump distance", true));
+  }
+  if (remaining > 0) {
+    reasons.push(reason("DEPTH_EXHAUSTED", "visible compatible liquidity cannot fully satisfy the requested quantity", true));
   }
 
   let status: TradeAnalysisStatus;
