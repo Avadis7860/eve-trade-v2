@@ -95,7 +95,7 @@ Source observations remain available so derived models can be rebuilt without re
 
 ## Phase 1 consistency rule
 
-ESI documents X-Pages pagination for the market orders route and warns that page-cache expiry can cause overlap between pages. ESI also documents that Last-Modified should remain the same across pages of a paginated resource and can be used to validate a coherent retrieval. Therefore Phase 1 does not equate "all HTTP requests returned 200" with "complete canonical snapshot": an inconsistent Last-Modified set produces PARTIAL state, while failed pages produce ERROR state.
+ESI currently recommends a compatibility-date header and documents X-Pages pagination for the market orders route and warns that page-cache expiry can cause overlap between pages. ESI also documents that Last-Modified should remain the same across pages of a paginated resource and can be used to validate a coherent retrieval. Therefore Phase 1 does not equate "all HTTP requests returned 200" with "complete canonical snapshot": an inconsistent Last-Modified set produces PARTIAL state, while failed pages produce ERROR state.
 
 ## Dependency rule
 
