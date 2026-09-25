@@ -19,7 +19,7 @@ test(
 
     try {
       const migration = await readFile(
-        resolve(process.cwd(), "database/migrations/004_opportunity_tracking.sql"),
+        resolve(import.meta.dirname, "../../../database/migrations/004_opportunity_tracking.sql"),
         "utf8",
       );
       await pool.query(migration);
