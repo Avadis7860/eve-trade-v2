@@ -1,8 +1,8 @@
 import { createHash } from "node:crypto";
 import type {
+  CanonicalPlayerState,
   EsiAsset,
   EsiMarketOrder,
-  PlayerComponent,
   MarketAnalysisSnapshot,
   MarketLocation,
   MarketOrderRange,
@@ -727,7 +727,20 @@ function validateMarketLeg(
   return reasons;
 }
 
-function componentComplete<T>(component: PlayerComponent<T>): component is PlayerComponent<T> & { records: T[] } {
+function walletComponentComplete(
+  component: CanonicalPlayerState["wallet"],
+): component is CanonicalPlayerState["wallet"] & { records: number[] } {
+  return (
+    component.quality.availability === "COMPLETE" &&
+    component.quality.coverage === "COMPLETE" &&
+    component.quality.health === "HEALTHY" &&
+    component.records !== null
+  );
+}
+
+function assetComponentComplete(
+  component: CanonicalPlayerState["assets"],
+): component is CanonicalPlayerState["assets"] & { records: EsiAsset[] } {
   return (
     component.quality.availability === "COMPLETE" &&
     component.quality.coverage === "COMPLETE" &&
@@ -754,22 +767,44 @@ function playerFreshness(
     ];
   }
 
-  const component =
-    required === "wallet"
-      ? player.state.wallet
-      : player.state.assets;
+  if (required === "wallet") {
+    const component = player.state.wallet;
+    if (!walletComponentComplete(component)) {
+      return [
+        reason(
+          "WALLET_UNAVAILABLE",
+          "wallet component is not complete and healthy",
+          true,
+        ),
+        ...freshnessReasons(
+          "wallet",
+          component.quality.observed_at,
+          component.quality.fresh_until,
+          maxAgeSeconds,
+          asOfMs,
+        ),
+      ];
+    }
 
-  if (!componentComplete(component)) {
+    return freshnessReasons(
+      "wallet",
+      component.quality.observed_at,
+      component.quality.fresh_until,
+      maxAgeSeconds,
+      asOfMs,
+    );
+  }
+
+  const component = player.state.assets;
+  if (!assetComponentComplete(component)) {
     return [
       reason(
-        required === "wallet" ? "WALLET_UNAVAILABLE" : "INVENTORY_UNAVAILABLE",
-        required === "wallet"
-          ? "wallet component is not complete and healthy"
-          : "asset component is not complete and healthy",
+        "INVENTORY_UNAVAILABLE",
+        "asset component is not complete and healthy",
         true,
       ),
       ...freshnessReasons(
-        required === "wallet" ? "wallet" : "inventory",
+        "inventory",
         component.quality.observed_at,
         component.quality.fresh_until,
         maxAgeSeconds,
@@ -779,7 +814,7 @@ function playerFreshness(
   }
 
   return freshnessReasons(
-    required === "wallet" ? "wallet" : "inventory",
+    "inventory",
     component.quality.observed_at,
     component.quality.fresh_until,
     maxAgeSeconds,
@@ -852,7 +887,7 @@ function resolveInventoryEvidence(
     return { reasons: [], records: null };
   }
 
-  if (player === null || !componentComplete(player.state.assets)) {
+  if (player === null || !assetComponentComplete(player.state.assets)) {
     return {
       reasons: [
         reason(
@@ -920,7 +955,7 @@ function capitalContext(
   const reasons: TradeAnalysisReason[] = [];
   let walletCash: number | null = null;
 
-  if (player !== null && componentComplete(player.state.wallet)) {
+  if (player !== null && walletComponentComplete(player.state.wallet)) {
     walletCash = player.state.wallet.records.at(-1) ?? null;
   }
 
