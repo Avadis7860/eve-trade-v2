@@ -430,7 +430,7 @@ function adviceFor(
       kind: "INSUFFICIENT_DATA",
       evidence_level: "INSUFFICIENT",
       reasons: [...reasons, reason("SCORE_UNAVAILABLE", "score cannot be reconstructed from sufficient evidence", true)],
-      blockers: [...new Set([...blockers, "SCORE_UNAVAILABLE"])],
+      blockers: [...new Set<ScoringReason["code"]>([...blockers, "SCORE_UNAVAILABLE"])],
       limitations: [],
     };
   }
