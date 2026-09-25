@@ -31,7 +31,7 @@ market analysis    player financial state
         prediction
             |
             v
-       recommendation
+    scoring & recommendation
             |
             v
            API
@@ -143,7 +143,7 @@ ESI currently recommends a compatibility-date header and documents X-Pages pagin
 
 ## Dependency rule
 
-Build in dependency order: ingestion -> persistence/history -> player state -> trade analysis -> opportunity history -> prediction -> recommendation -> API/UI.
+Build in dependency order: ingestion -> persistence/history -> player state -> trade analysis -> opportunity history -> prediction -> scoring -> recommendation -> API/UI.
 
 A downstream module consumes explicit upstream contracts. Shortcuts across boundaries require an architectural decision recorded in the repository.
 
@@ -166,7 +166,6 @@ History metrics are derived from the canonical order book and missing sides prod
 Order evolution is observational only: APPEARED, UNCHANGED, MODIFIED and DISAPPEARED. A disappearance is never interpreted as filled, cancelled or expired without an external source.
 
 The Phase 2 analytical tables are rebuildable caches/indexes. Phase 1 raw observations remain the reconstruction source of truth.
-
 
 ## Phase 3 — Player collection integrity
 
@@ -212,3 +211,26 @@ measured evaluation / traceable inference
 ```
 
 The first model is an empirical rate baseline rather than an opaque ML dependency. A dataset below the declared minimum labeled sample threshold yields `INSUFFICIENT_DATA` instead of a synthetic prediction. The evaluation split excludes a stream that crosses the train/evaluation boundary so one opportunity/principal trajectory cannot silently appear on both sides.
+
+## Phase 7 — Scoring & advice
+
+Phase 7 consumes the explicit Phase 4 trade-analysis result, Phase 5 opportunity evidence and the optional Phase 6 prediction result. It introduces no new ESI or persistence dependency.
+
+The versioned scoring contract is `phase-07.1`; the default scoring policy is `phase-07-policy.1`. The v1 policy is deterministic and fingerprints its complete definition.
+
+The score is bounded to 0–100 and exposes four independent dimensions:
+
+- economics: simulated return normalized from 0 to the declared 10% target;
+- executability: the smaller of acquisition/disposition filled-quantity ratios;
+- data quality: current complete evidence scores fully, while partial analysis is explicitly reduced;
+- prediction signal: optional and used only when the prediction is a measured holdout result with a valid probability.
+
+Default v1 weights are 50% economics, 25% executability, 15% data quality and 10% prediction signal. When the optional prediction is absent or not eligible, the remaining used dimensions are renormalized rather than treating the missing signal as zero.
+
+Stale or unknown freshness blocks the v1 score. Missing simulated economics, unavailable execution evidence, invalid input linkage and other required evidence remain explicit blockers. UNKNOWN/PARTIAL/ERROR/ABSENT information is never silently converted to zero.
+
+Prediction probability, prediction quality and confidence remain separate. In particular, the existing Phase 6 `TRAINING_ONLY` and `INSUFFICIENT_DATA` states do not contribute to the v1 score, and `NOT_ASSESSED` confidence is never inferred by the scoring engine.
+
+Advice is a separate deterministic output with explicit reasons, blockers, limitations and evidence level. Positive simulated economics with full current execution can produce an actionable state; non-positive simulated economics produces `NO_ACTION`; partial execution produces `WATCH`; and insufficient evidence produces `INSUFFICIENT_DATA`. Advice is a decision aid, not a guarantee of realized profit.
+
+The scoring domain is pure, deterministic, testable without HTTP/ESI/PostgreSQL, and reconstructible from the input evidence plus the versioned policy.
