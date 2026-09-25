@@ -3,6 +3,7 @@ import type {
   MarketHistoryBuildResult,
   MarketHistorySnapshot,
   MarketSnapshotTypeMetrics,
+  MarketOrderEvolution,
   MarketCollection,
   MarketPageObservation,
 } from "@eve-trade/contracts";
@@ -15,6 +16,7 @@ export class MarketHistoryRepository {
     const client = await this.pool.connect();
     try {
       await client.query("BEGIN");
+      await client.query("DELETE FROM market_order_evolution");
       await client.query("DELETE FROM market_snapshot_depth_levels");
       await client.query("DELETE FROM market_snapshot_type_metrics");
       await client.query("DELETE FROM market_history_snapshots");
@@ -27,6 +29,9 @@ export class MarketHistoryRepository {
       }
       for (const level of result.depth_levels) {
         await this.insertDepth(client, level);
+      }
+      for (const evolution of result.order_evolution) {
+        await this.insertEvolution(client, evolution);
       }
 
       await client.query("COMMIT");
@@ -112,6 +117,23 @@ export class MarketHistoryRepository {
       "INSERT INTO market_snapshot_depth_levels " +
       "(snapshot_id,type_id,is_buy_order,price,volume_remain,order_count) VALUES ($1,$2,$3,$4,$5,$6)",
       [level.snapshot_id, level.type_id, level.is_buy_order, level.price, level.volume_remain, level.order_count],
+    );
+  }
+
+  private async insertEvolution(client: PoolClient, evolution: MarketOrderEvolution): Promise<void> {
+    await client.query(
+      "INSERT INTO market_order_evolution " +
+      "(previous_snapshot_id,snapshot_id,order_id,kind,changed_fields,previous_order,current_order) " +
+      "VALUES ($1,$2,$3,$4,$5,$6,$7)",
+      [
+        evolution.previous_snapshot_id,
+        evolution.snapshot_id,
+        evolution.order_id,
+        evolution.kind,
+        JSON.stringify(evolution.changed_fields),
+        evolution.previous_order ? JSON.stringify(evolution.previous_order) : null,
+        evolution.current_order ? JSON.stringify(evolution.current_order) : null,
+      ],
     );
   }
 }
