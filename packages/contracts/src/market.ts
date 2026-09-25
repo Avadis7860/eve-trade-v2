@@ -24,6 +24,7 @@ export interface EsiMarketOrder {
 }
 
 export interface MarketPageObservation {
+  observation_id: string;
   collection_id: string;
   region_id: number;
   page: number;
@@ -47,6 +48,7 @@ export interface MarketPageObservation {
     retry_after: string | null;
     error_limit_remain: string | null;
     error_limit_reset: string | null;
+    compatibility_date: string | null;
   };
   error: {
     code: string;
