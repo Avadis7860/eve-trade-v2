@@ -135,12 +135,72 @@ export class OpportunityTrackingRepository {
     });
   }
 
+  async listAllObservations(): Promise<OpportunityObservation[]> {
+    const result = await this.pool.query(
+      "SELECT o.observation_id,o.opportunity_id,o.observed_at,o.phase4_contract_version," +
+      "o.phase4_scenario_fingerprint,o.presence,o.freshness_state,o.provenance,o.observation_scope," +
+      "o.scenario_snapshot,o.analysis_result,t.identity_contract_version,t.identity_payload " +
+      "FROM opportunity_observations o " +
+      "JOIN opportunities t ON t.opportunity_id=o.opportunity_id " +
+      "ORDER BY o.observed_at,o.observation_id",
+    );
+
+    return result.rows.map((row) => {
+      const resultValue = row.analysis_result as OpportunityObservation["phase4_result"];
+      return {
+        opportunity_id: row.opportunity_id,
+        observation_id: row.observation_id,
+        observed_at: new Date(row.observed_at).toISOString(),
+        identity: {
+          opportunity_id: row.opportunity_id,
+          contract_version: row.identity_contract_version,
+          payload: row.identity_payload,
+        },
+        scenario_snapshot: row.scenario_snapshot,
+        phase4_contract_version: row.phase4_contract_version,
+        phase4_scenario_fingerprint: row.phase4_scenario_fingerprint,
+        presence: row.presence,
+        freshness_state: row.freshness_state,
+        phase4_result: resultValue,
+        market_snapshot_ids: {
+          acquisition: resultValue.market_evidence.acquisition_snapshot_id,
+          disposition: resultValue.market_evidence.disposition_snapshot_id,
+        },
+        order_ids: {
+          acquisition: [...resultValue.market_evidence.acquisition_order_ids],
+          disposition: [...resultValue.market_evidence.disposition_order_ids],
+        },
+        provenance: row.provenance ?? [],
+        scope: row.observation_scope,
+      };
+    });
+  }
+
   async listOutcomes(opportunityId: string): Promise<OpportunityOutcome[]> {
     const result = await this.pool.query(
       "SELECT outcome_id,opportunity_id,observed_at,status,evidence_coverage,expected_quantity," +
       "observed_quantity,evidence,observed_subresult FROM opportunity_outcomes " +
       "WHERE opportunity_id=$1 ORDER BY observed_at,outcome_id",
       [opportunityId],
+    );
+    return result.rows.map((row) => ({
+      opportunity_id: row.opportunity_id,
+      outcome_id: row.outcome_id,
+      observed_at: new Date(row.observed_at).toISOString(),
+      status: row.status,
+      evidence_coverage: row.evidence_coverage,
+      expected_quantity: row.expected_quantity === null ? null : Number(row.expected_quantity),
+      observed_quantity: row.observed_quantity === null ? null : Number(row.observed_quantity),
+      evidence: row.evidence ?? [],
+      observed_subresult: row.observed_subresult ?? null,
+    }));
+  }
+
+  async listAllOutcomes(): Promise<OpportunityOutcome[]> {
+    const result = await this.pool.query(
+      "SELECT outcome_id,opportunity_id,observed_at,status,evidence_coverage,expected_quantity," +
+      "observed_quantity,evidence,observed_subresult FROM opportunity_outcomes " +
+      "ORDER BY observed_at,outcome_id",
     );
     return result.rows.map((row) => ({
       opportunity_id: row.opportunity_id,
