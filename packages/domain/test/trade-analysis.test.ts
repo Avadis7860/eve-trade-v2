@@ -680,3 +680,183 @@ test("maker modes are reserved and never executable", async () => {
   assert.equal(result.status, "NOT_EXECUTABLE");
   assert.equal(result.status_reasons.some((r) => r.code === "MAKER_MODE_UNSUPPORTED"), true);
 });
+
+test("max capital constraint is enforced independently of wallet balance", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    constraints: {
+      max_quantity: null,
+      max_capital: 150,
+      min_quantity: null,
+      execution_modes: ["TAKER_AGAINST_SELL", "TAKER_AGAINST_BUY"],
+    },
+  }));
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.acquisition_leg.filled_quantity, 1);
+  assert.equal(result.acquisition_leg.remaining_quantity, 4);
+  assert.equal(result.status_reasons.some((r) => r.code === "CAPITAL_INSUFFICIENT"), true);
+});
+
+test("min quantity constraint blocks a request below the declared floor", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    constraints: {
+      max_quantity: null,
+      max_capital: null,
+      min_quantity: 6,
+      execution_modes: ["TAKER_AGAINST_SELL", "TAKER_AGAINST_BUY"],
+    },
+  }));
+
+  assert.equal(result.status, "NOT_EXECUTABLE");
+  assert.equal(result.status_reasons.some((r) => r.code === "CONSTRAINT_VIOLATION"), true);
+});
+
+test("inventory evidence can prove insufficient quantity without fabricating inventory", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    scenario: {
+      ...request().scenario,
+      acquisition: {
+        source: "EXISTING_INVENTORY",
+        inventory: {
+          source: "EXISTING_INVENTORY",
+          type_id: 34,
+          quantity: 5,
+          asset_ids: [501],
+          cost_basis: 300,
+        },
+      },
+    },
+    acquisition_market: null,
+    player_context: {
+      state: playerState({
+        assets: [
+          {
+            item_id: 501,
+            type_id: 34,
+            quantity: 3,
+            location_id: 60003760,
+          } as EsiAsset,
+        ],
+      }),
+    },
+    capital_policy: {
+      source: "EXPLICIT_DEPLOYABLE",
+      deployable_capital: 0,
+      escrow: null,
+      escrow_is_separate: true,
+    },
+  }));
+
+  assert.equal(result.status, "NOT_EXECUTABLE");
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "INVENTORY_INSUFFICIENT"),
+    true,
+  );
+  assert.equal(result.capital_context.inventory?.[0]?.quantity, 3);
+});
+
+test("stale wallet blocks wallet-funded analysis", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    player_context: {
+      state: playerState({
+        wallet: 1_000_000,
+        walletObservedAt: "2026-09-25T08:00:00.000Z",
+      }),
+    },
+  }));
+
+  assert.equal(result.status, "STALE");
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "FRESHNESS_EXCEEDED"),
+    true,
+  );
+});
+
+test("market ERROR remains unavailable instead of becoming an empty book", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.disposition_market!.snapshot.status = "ERROR";
+  input.disposition_market!.market.status = "ERROR";
+  input.disposition_market!.market.orders = [];
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "DATA_UNAVAILABLE");
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "MARKET_UNAVAILABLE"),
+    true,
+  );
+});
+
+test("missing disposition market remains absent rather than becoming zero liquidity", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({ disposition_market: null }));
+
+  assert.equal(result.status, "DATA_UNAVAILABLE");
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "MARKET_UNAVAILABLE"),
+    true,
+  );
+});
+
+test("partial wallet evidence remains unavailable", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.player_context!.state.wallet.quality.availability = "PARTIAL";
+  input.player_context!.state.wallet.records = [1_000_000];
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "DATA_UNAVAILABLE");
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "WALLET_UNAVAILABLE"),
+    true,
+  );
+});
+
+test("error wallet evidence remains unavailable", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.player_context!.state.wallet.quality.health = "FAILED";
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "DATA_UNAVAILABLE");
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "WALLET_UNAVAILABLE"),
+    true,
+  );
+});
+
+test("unknown wallet evidence remains unavailable", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.player_context!.state.wallet.quality.availability = "UNKNOWN";
+  input.player_context!.state.wallet.records = null;
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "DATA_UNAVAILABLE");
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "WALLET_UNAVAILABLE"),
+    true,
+  );
+});
+
+test("broker fee may remain unknown for immediate taker analysis", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const result = analyzeTradeRequest(request({
+    fee_context: {
+      broker_fee_rate: null,
+      sales_tax_rate: 0.075,
+      source: "EXPLICIT",
+    },
+  }));
+
+  assert.equal(result.status, "EXECUTABLE");
+  assert.equal(result.economic_result.fees_total, 33.75);
+});
