@@ -38,10 +38,7 @@ function marketIdentity(
   market: Extract<TradeScenario["acquisition"], { source: "MARKET" }>["market"],
 ): OpportunityIdentityMarketLeg {
   return {
-    execution_mode: market.execution_mode === "TAKER_AGAINST_SELL" ||
-      market.execution_mode === "TAKER_AGAINST_BUY"
-      ? market.execution_mode
-      : "TAKER_AGAINST_SELL",
+    execution_mode: market.execution_mode,
     execution_location: {
       region_id: market.execution_location.region_id,
       system_id: market.execution_location.system_id,
@@ -264,6 +261,9 @@ export function assessOpportunityOutcome(
 
   let status: OpportunityOutcome["status"];
   if (input.evidence_coverage === "NONE") {
+    if (input.observed_quantity !== null && input.observed_quantity > 0) {
+      throw new Error("observed_quantity cannot be positive when evidence coverage is NONE");
+    }
     status = "NO_EVIDENCE";
   } else if (input.observed_quantity === null) {
     status = "UNKNOWN";
