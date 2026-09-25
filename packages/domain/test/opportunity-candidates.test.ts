@@ -52,6 +52,10 @@ test("generates one deterministic market-to-market candidate per type with posit
   const scenario = scenarios[0]!;
   assert.equal(scenario.type_id, 34);
   assert.equal(scenario.requested_quantity, 5);
+  assert.equal(scenario.acquisition.source, "MARKET");
+  assert.equal(scenario.disposition.source, "MARKET");
+  assert.ok(scenario.acquisition.market);
+  assert.ok(scenario.disposition.market);
   assert.equal(scenario.acquisition.market.limit_price, 100);
   assert.equal(scenario.disposition.market.limit_price, 120);
   assert.equal(scenario.origin.location_id, 60003760);
