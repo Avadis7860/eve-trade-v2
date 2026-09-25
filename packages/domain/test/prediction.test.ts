@@ -238,7 +238,6 @@ test("features use only observations strictly before the reference timestamp", (
   assert.equal(dataset.samples[0]?.features.previous_presence, null);
   assert.equal(dataset.samples[1]?.features.prior_observation_count, 1);
   assert.equal(dataset.samples[1]?.features.previous_simulated_net_result, 100);
-  assert.equal(dataset.samples[1]?.features.previous_simulated_net_result === 999, false);
 });
 
 test("future presence produces a point-in-time positive label at the horizon", () => {
