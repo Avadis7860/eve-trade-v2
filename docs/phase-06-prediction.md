@@ -85,8 +85,7 @@ Ce contrat ne prétend pas démontrer une continuité ininterrompue entre `t` et
 Le target consomme uniquement une preuve d'outcome compatible avec le scope du sample :
 
 - `COMPLETELY_OBSERVED` → `POSITIVE` ;
-- `NO_EVIDENCE` avec couverture `COMPLETE` → `NEGATIVE` ;
-- `PARTIALLY_OBSERVED`, `UNKNOWN` ou `NOT_OBSERVED` → `UNKNOWN`.
+- `NO_EVIDENCE`, `PARTIALLY_OBSERVED`, `UNKNOWN` ou `NOT_OBSERVED` → `UNKNOWN`.
 
 Une évidence CHARACTER appartenant à un autre personnage ne peut pas labelliser le sample courant. Une preuve composée de scopes différents est également rejetée comme label exploitable.
 
@@ -131,7 +130,12 @@ Le modèle ne revendique pas de calibration. L'inférence retourne seulement :
 - version modèle ;
 - dataset source ;
 - taille d'échantillon ;
-- taux empirique observé.
+- taux empirique observé ;
+- échantillon de référence, date de feature, scope et provenance lorsqu'une observation d'inférence est fournie ;
+- statut de qualité explicite (`TRAINING_ONLY` ou `INSUFFICIENT_DATA`) ;
+- `confidence = NOT_ASSESSED`, tant qu'aucune calibration/confidence n'est démontrée.
+
+La fenêtre temporelle utilisée pour l'entraînement est également conservée dans le modèle.
 
 Sous le seuil minimal, l'entraînement retourne `INSUFFICIENT_DATA` et aucun taux n'est produit.
 
@@ -145,7 +149,8 @@ La baseline expose :
 - nombre de positifs/négatifs ;
 - accuracy ;
 - Brier score ;
-- état `calibration_status = NOT_ASSESSED`.
+- état `calibration_status = NOT_ASSESSED` ;
+- point de départ de la période d'évaluation dans le contrat de résultat lorsqu'il est fourni par le pipeline.
 
 Les métriques sont donc des mesures sur un échantillon identifié ; elles ne sont pas présentées comme une garantie de performance future.
 
