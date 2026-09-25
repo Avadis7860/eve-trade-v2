@@ -302,6 +302,23 @@ test("complete outcome evidence becomes a positive observation label only for it
   assert.equal(target?.value, true);
 });
 
+test("complete outcome can be traced without changing the public opportunity scope", () => {
+  const sample = observation("opp", "o1", "2026-09-25T10:00:00Z", 100, "PRESENT", 90000001);
+  const dataset = buildPredictionDataset({
+    observations: [sample],
+    outcomes: [],
+  }, datasetConfig);
+  const prediction = predictEmpiricalRate(null, "OUTCOME_OBSERVED_AT_HORIZON", dataset.samples[0] ?? null);
+
+  assert.equal(prediction.status, "INSUFFICIENT_DATA");
+  assert.equal(prediction.target_kind, "OUTCOME_OBSERVED_AT_HORIZON");
+  assert.equal(prediction.sample_id, dataset.samples[0]?.sample_id ?? null);
+  assert.equal(prediction.feature_observed_at, "2026-09-25T10:00:00Z");
+  assert.equal(prediction.scope?.principal_scope, "CHARACTER");
+  assert.equal(prediction.confidence, "NOT_ASSESSED");
+  assert.deepEqual(prediction.provenance, sample.provenance);
+});
+
 test("temporal split excludes trajectories that cross the evaluation boundary", () => {
   const training = observation("train", "tr1", "2026-09-25T09:00:00Z", 100);
   const trainingLabel = observation("train", "tr2", "2026-09-25T09:05:00Z", 100, "PRESENT");
@@ -393,15 +410,24 @@ test("empirical baseline is deterministic and reports only measured holdout metr
   assert.equal(evaluation.brier_score, 1);
   assert.equal(evaluation.calibration_status, "NOT_ASSESSED");
 
+  assert.equal(training.model?.training_window_start, "2026-09-25T08:00:00Z");
+  assert.equal(training.model?.training_window_end, "2026-09-25T08:00:00Z");
+
   assert.deepEqual(
-    predictEmpiricalRate(training.model!),
+    predictEmpiricalRate(training.model!, "PRESENCE_AT_HORIZON", split.evaluation_samples[0] ?? null),
     {
       status: "PREDICTED",
       target_kind: "PRESENCE_AT_HORIZON",
       model_version: "phase-06-test-model.1",
       dataset_id: dataset.metadata.dataset_id,
+      sample_id: split.evaluation_samples[0]?.sample_id ?? null,
+      feature_observed_at: "2026-09-25T11:00:00Z",
+      scope: split.evaluation_samples[0]?.scope ?? null,
       sample_size: 1,
       estimated_probability: 1,
+      quality: "TRAINING_ONLY",
+      confidence: "NOT_ASSESSED",
+      provenance: split.evaluation_samples[0]?.provenance ?? [],
     },
   );
 });
