@@ -31,7 +31,6 @@ export interface CharacterSourceProvenance extends SourceProvenance {
 
 export interface EsiMarketOrder {
   duration: number;
-  escrow: number;
   is_buy_order: boolean;
   issued: string;
   location_id: number;
