@@ -331,7 +331,7 @@ export function buildMarketHistory(inputs: MarketHistoryInput[]): MarketHistoryB
     metrics.push(...deriveMarketTypeMetrics(snapshot.snapshot_id, canonical.orders));
     depth_levels.push(...deriveMarketDepth(snapshot.snapshot_id, canonical.orders));
 
-    if (previousComparable !== null) {
+    if (previousComparable !== undefined) {
       order_evolution.push(
         ...compareMarketOrders(
           previousComparable.snapshot.snapshot_id,
