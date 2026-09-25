@@ -307,7 +307,15 @@ function playerState(overrides: {
 function request(overrides: Partial<TradeAnalysisRequest> = {}): TradeAnalysisRequest {
   const market = snapshot([
     baseOrder({ order_id: 1, price: 100, volume_remain: 10 }),
-    baseOrder({ order_id: 2, is_buy_order: true, price: 90, volume_remain: 10 }),
+  ]);
+  const dispositionMarket = snapshot([
+    baseOrder({
+      order_id: 2,
+      is_buy_order: true,
+      price: 90,
+      volume_remain: 10,
+      location_id: 60003761,
+    }),
   ]);
   return {
     scenario: {
@@ -345,8 +353,15 @@ function request(overrides: Partial<TradeAnalysisRequest> = {}): TradeAnalysisRe
     },
     acquisition_market: market,
     disposition_market: {
-      snapshot: { ...market.snapshot, snapshot_id: "snapshot-2", collection_id: "snapshot-2" },
-      market: { ...market.market, collection_id: "snapshot-2" },
+      snapshot: {
+        ...dispositionMarket.snapshot,
+        snapshot_id: "snapshot-2",
+        collection_id: "snapshot-2",
+      },
+      market: {
+        ...dispositionMarket.market,
+        collection_id: "snapshot-2",
+      },
     },
     player_context: { state: playerState({ wallet: 1_000_000 }) },
     capital_policy: {
