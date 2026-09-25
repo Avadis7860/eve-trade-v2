@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { CanonicalMarketState, MarketHistorySnapshot, EsiMarketOrder } from "@eve-trade/contracts";
-import { fingerprintTradeScenario, simulateTakerAgainstBuy, simulateTakerAgainstSell } from "../src/trade-analysis.js";
+import { fingerprintTradeScenario, parseMarketOrderRange, simulateTakerAgainstBuy, simulateTakerAgainstSell } from "../src/trade-analysis.js";
 
 const baseOrder = (overrides: Partial<EsiMarketOrder> = {}): EsiMarketOrder => ({
   duration: 90,
@@ -53,6 +53,12 @@ function snapshot(orders: EsiMarketOrder[]): { snapshot: MarketHistorySnapshot; 
 }
 
 const location = { region_id: 10000002, system_id: 30000142, location_id: 60003760 };
+
+test("known ESI market ranges are parsed while unknown source values remain unknown", () => {
+  assert.equal(parseMarketOrderRange("station"), "station");
+  assert.equal(parseMarketOrderRange("40"), "40");
+  assert.equal(parseMarketOrderRange("future-esi-value"), null);
+});
 
 test("taker against sell crosses multiple levels but settles at the taker buy price", () => {
   const result = simulateTakerAgainstSell({
@@ -200,6 +206,29 @@ test("non-comparable snapshots are rejected before matching", () => {
 
   assert.equal(result.status, "NOT_EXECUTABLE");
   assert.equal(result.reasons[0]?.code, "MARKET_NOT_COMPARABLE");
+});
+
+test("unknown counterparty range never becomes silently compatible", () => {
+  const result = simulateTakerAgainstBuy({
+    snapshot: snapshot([
+      baseOrder({
+        order_id: 1,
+        is_buy_order: true,
+        price: 100,
+        range: "future-esi-value",
+        volume_remain: 5,
+      }),
+    ]),
+    type_id: 34,
+    execution_location: location,
+    quantity: 1,
+    limit_price: 99,
+    order_range: "station",
+  });
+
+  assert.equal(result.status, "DATA_UNAVAILABLE");
+  assert.equal(result.filled_quantity, 0);
+  assert.equal(result.reasons.some((item) => item.code === "RANGE_UNKNOWN"), true);
 });
 
 test("scenario fingerprint is deterministic across object key order", () => {

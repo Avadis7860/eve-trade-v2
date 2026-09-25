@@ -2,7 +2,7 @@ export type AvailabilityStatus = "COMPLETE" | "PARTIAL" | "ERROR" | "UNKNOWN";
 
 export type PrincipalScope = "PUBLIC" | "CHARACTER" | "CORPORATION";
 
-export type KnownMarketOrderRange =
+export type MarketOrderRange =
   | "station"
   | "solarsystem"
   | "region"
@@ -15,15 +15,6 @@ export type KnownMarketOrderRange =
   | "20"
   | "30"
   | "40";
-
-/**
- * Raw ESI market-order range representation.
- *
- * Known ESI values are documented above, while the open string arm prevents
- * narrowing the persisted source contract against a future ESI representation.
- * The analytical domain must validate and interpret the value explicitly.
- */
-export type MarketOrderRange = KnownMarketOrderRange | (string & {});
 
 export interface SourceProvenance {
   source_kind: "ESI";
@@ -47,7 +38,7 @@ export interface EsiMarketOrder {
   min_volume: number;
   order_id: number;
   price: number;
-  range: MarketOrderRange;
+  range: string;
   system_id: number;
   type_id: number;
   volume_remain: number;

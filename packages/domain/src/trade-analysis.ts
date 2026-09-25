@@ -53,6 +53,26 @@ function invalidPrice(price: number): boolean {
   return !Number.isFinite(price) || price <= 0;
 }
 
+export function parseMarketOrderRange(value: string): MarketOrderRange | null {
+  if (
+    value === "station" ||
+    value === "solarsystem" ||
+    value === "region" ||
+    value === "1" ||
+    value === "2" ||
+    value === "3" ||
+    value === "4" ||
+    value === "5" ||
+    value === "10" ||
+    value === "20" ||
+    value === "30" ||
+    value === "40"
+  ) {
+    return value;
+  }
+  return null;
+}
+
 function snapshotUsable(snapshot: MarketAnalysisSnapshot): boolean {
   return (
     snapshot.snapshot.status === "COMPLETE" &&
@@ -149,8 +169,14 @@ function sortBuyOrders(
   for (const order of orders) {
     if (order.type_id !== input.type_id || !order.is_buy_order || order.volume_remain <= 0 || order.price < input.limit_price) continue;
 
+    const parsedRange = parseMarketOrderRange(order.range);
+    if (parsedRange === null) {
+      unknownRangeCount += 1;
+      continue;
+    }
+
     const range = evaluateRange(
-      order.range,
+      parsedRange,
       {
         region_id: input.snapshot.market.region_id,
         system_id: order.system_id,
