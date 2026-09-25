@@ -2,7 +2,7 @@
 
 Database schema history for EVE Trade v2.
 
-Phase 1 introduces the first persistence contract. Apply SQL migrations in lexical order.
+Apply SQL migrations in lexical order.
 
 001_market_ingestion.sql creates:
 - collection/checkpoint metadata;
@@ -18,3 +18,14 @@ Raw page payloads, response headers, provenance and observation timestamps remai
 - complete per-price depth levels.
 
 These tables are derived and replaceable. Raw Phase 1 observations remain the reconstruction source.
+
+003_player_data.sql creates:
+- character-scoped Player sync collections;
+- append-only Player observations;
+- explicit Player component quality state;
+- character principal metadata;
+- typed current wallet, journal, transaction, asset and active-order state.
+
+Player current tables are derived from complete observations. A PARTIAL/ERROR/UNKNOWN component does not delete or replace the last complete canonical rows; its quality state remains explicit.
+
+Player observations retain raw payload, provenance, endpoint/page identity, observation timestamp, HTTP status, retry count and cache/rate-limit metadata. No credential field is persisted.
