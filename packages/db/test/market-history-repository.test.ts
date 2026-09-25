@@ -86,7 +86,17 @@ const result: MarketHistoryBuildResult = {
       order_count: 1,
     },
   ],
-  order_evolution: [],
+  order_evolution: [
+    {
+      previous_snapshot_id: firstId,
+      snapshot_id: secondId,
+      order_id: 34,
+      kind: "DISAPPEARED",
+      changed_fields: [],
+      previous_order: null,
+      current_order: null,
+    },
+  ],
 };
 
 test("persists and replaces derived market history atomically", { skip: !databaseUrl }, async () => {
@@ -94,7 +104,7 @@ test("persists and replaces derived market history atomically", { skip: !databas
   try {
     await pool.query(await readFile(migration1Path, "utf8"));
     await pool.query(await readFile(migration2Path, "utf8"));
-    await pool.query("TRUNCATE market_snapshot_depth_levels, market_snapshot_type_metrics, market_history_snapshots CASCADE");
+    await pool.query("TRUNCATE market_order_evolution, market_snapshot_depth_levels, market_snapshot_type_metrics, market_history_snapshots CASCADE");
     const repository = new MarketHistoryRepository(pool);
 
     await repository.replace(result);
@@ -104,6 +114,9 @@ test("persists and replaces derived market history atomically", { skip: !databas
       "(SELECT count(*) FROM market_snapshot_depth_levels)::int AS depth",
     );
     assert.deepEqual(firstCounts.rows[0], {snapshots: 3, metrics: 1, depth: 1});
+
+    const evolutionRows = await pool.query("SELECT order_id,kind FROM market_order_evolution WHERE snapshot_id=$1", [secondId]);
+    assert.deepEqual(evolutionRows.rows.map((row) => ({order_id: Number(row.order_id), kind: row.kind})), [{order_id: 34, kind: "DISAPPEARED"}]);
 
     const snapshots = await repository.listSnapshots();
     assert.equal(snapshots[1]?.previous_snapshot_id, firstId);
