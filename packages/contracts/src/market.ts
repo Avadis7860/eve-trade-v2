@@ -138,3 +138,10 @@ export interface MarketOrderEvolution {
   previous_order: EsiMarketOrder | null;
   current_order: EsiMarketOrder | null;
 }
+
+export interface MarketHistoryBuildResult {
+  snapshots: MarketHistorySnapshot[];
+  metrics: MarketSnapshotTypeMetrics[];
+  depth_levels: MarketDepthLevel[];
+  order_evolution: MarketOrderEvolution[];
+}
