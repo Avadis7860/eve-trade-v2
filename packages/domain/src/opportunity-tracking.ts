@@ -6,7 +6,7 @@ import type {
   OpportunityIdentityMarketLeg,
   OpportunityIdentityPayload,
   OpportunityObservation,
-  OpportunityObserver,
+  OpportunityObservationScope,
   OpportunityOutcome,
   OpportunityOutcomeAssessmentInput,
   OpportunityOutcomeEvidence,
@@ -93,12 +93,12 @@ function freshnessState(result: TradeAnalysisResult): OpportunityFreshnessState 
 
 function observationProvenance(
   result: TradeAnalysisResult,
-  observer: OpportunityObserver | null,
+  scope: OpportunityObservationScope,
 ): OpportunityObservation["provenance"] {
   const entries = [
     result.market_evidence.acquisition_provenance,
     result.market_evidence.disposition_provenance,
-    observer?.provenance ?? null,
+    scope.provenance,
   ].filter((entry): entry is NonNullable<typeof entry> => entry !== null);
   const seen = new Set<string>();
   return entries.filter((entry) => {
@@ -115,22 +115,23 @@ export interface CreateOpportunityObservationInput {
   phase4_result: TradeAnalysisResult;
   presence: OpportunityPresence;
   observer_character_id?: number | null;
-  observer_provenance?: OpportunityObserver["provenance"];
+  observer_provenance?: OpportunityObservationScope["provenance"];
 }
 
 export function createOpportunityObservation(
   input: CreateOpportunityObservationInput,
 ): OpportunityObservation {
   const identity = buildOpportunityIdentity(input.scenario);
-  const observer =
-    input.observer_character_id === null ||
-    input.observer_character_id === undefined
-      ? null
-      : {
-          character_id: input.observer_character_id,
-          principal_scope: "CHARACTER",
-          provenance: input.observer_provenance ?? null,
-        } satisfies OpportunityObserver;
+  const scope: OpportunityObservationScope = {
+    principal_scope:
+      input.observer_character_id === null ||
+      input.observer_character_id === undefined
+        ? "PUBLIC"
+        : "CHARACTER",
+    principal_id: input.observer_character_id ?? null,
+    character_id: input.observer_character_id ?? null,
+    provenance: input.observer_provenance ?? null,
+  };
 
   const observationId = hash({
     contract_version: OPPORTUNITY_TRACKING_CONTRACT_VERSION,
@@ -138,6 +139,7 @@ export function createOpportunityObservation(
     observed_at: input.observed_at,
     phase4_scenario_fingerprint: input.phase4_result.scenario_fingerprint,
     presence: input.presence,
+    scope,
     phase4_result: input.phase4_result,
   });
 
@@ -160,8 +162,8 @@ export function createOpportunityObservation(
       acquisition: [...input.phase4_result.market_evidence.acquisition_order_ids],
       disposition: [...input.phase4_result.market_evidence.disposition_order_ids],
     },
-    provenance: observationProvenance(input.phase4_result, observer),
-    observer,
+    provenance: observationProvenance(input.phase4_result, scope),
+    scope,
   };
 }
 
@@ -227,23 +229,55 @@ function classifyRelation(
 export function reconstructOpportunityHistory(
   observations: OpportunityObservation[],
 ): OpportunityHistoryEvent[] {
-  const ordered = [...observations].sort((a, b) =>
+  const streams = new Map<string, OpportunityObservation[]>();
+
+  for (const observation of observations) {
+    const key = [
+      observation.opportunity_id,
+      observation.scope.principal_scope,
+      observation.scope.principal_id ?? "none",
+    ].join(":");
+    const stream = streams.get(key);
+    if (stream) stream.push(observation);
+    else streams.set(key, [observation]);
+  }
+
+  const history: OpportunityHistoryEvent[] = [];
+  for (const stream of streams.values()) {
+    const ordered = [...stream].sort((a, b) =>
+      a.observed_at.localeCompare(b.observed_at) ||
+      a.observation_id.localeCompare(b.observation_id),
+    );
+
+    for (const [index, current] of ordered.entries()) {
+      const previous = ordered[index - 1] ?? null;
+      history.push({
+        opportunity_id: current.opportunity_id,
+        kind: previous === null ? "INITIAL" : classifyRelation(previous, current),
+        previous_observation_id: previous?.observation_id ?? null,
+        observation_id: current.observation_id,
+        observed_at: current.observed_at,
+        scope: current.scope,
+      });
+    }
+  }
+
+  return history.sort((a, b) =>
+    a.opportunity_id.localeCompare(b.opportunity_id) ||
+    a.scope.principal_scope.localeCompare(b.scope.principal_scope) ||
+    String(a.scope.principal_id ?? "").localeCompare(String(b.scope.principal_id ?? "")) ||
     a.observed_at.localeCompare(b.observed_at) ||
     a.observation_id.localeCompare(b.observation_id),
   );
+}
 
-  const history: OpportunityHistoryEvent[] = [];
-  for (const [index, current] of ordered.entries()) {
-    const previous = ordered[index - 1] ?? null;
-    history.push({
-      opportunity_id: current.opportunity_id,
-      kind: previous === null ? "INITIAL" : classifyRelation(previous, current),
-      previous_observation_id: previous?.observation_id ?? null,
-      observation_id: current.observation_id,
-      observed_at: current.observed_at,
-    });
-  }
-  return history;
+export function fingerprintOpportunityOutcome(
+  outcome: Omit<OpportunityOutcome, "outcome_id">,
+): string {
+  return hash({
+    contract_version: OPPORTUNITY_TRACKING_CONTRACT_VERSION,
+    outcome,
+  });
 }
 
 export function assessOpportunityOutcome(
