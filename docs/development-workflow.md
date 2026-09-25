@@ -85,7 +85,7 @@ Please ensure that Dependency graph is enabled.
 
 The action is therefore not kept as a required workflow in OPS-001. This is deliberate: an always-failing prerequisite is not an efficient CI gate, and masking the failure would destroy the signal.
 
-When the repository owner enables the Dependency Graph in GitHub Settings -> Advanced Security, Dependency Review can be reintroduced as a dedicated PR check without changing the application CI contract.
+When the repository owner enables the Dependency Graph in GitHub Settings -> Advanced Security, Dependency Review can be reintroduced as a dedicated PR check without changing the application CI contract. GitHub documents the Dependency Graph as the prerequisite for Dependency Review.
 
 ## Dependabot
 
@@ -94,6 +94,8 @@ When the repository owner enables the Dependency Graph in GitHub Settings -> Adv
 Normal minor and patch updates are grouped. Security updates are grouped separately. Major version updates remain individual so they require deliberate review instead of becoming an automated bulk upgrade.
 
 Normal version-update pull requests are limited to three open items.
+
+Dependabot version-update PRs and security-update PRs are separate GitHub mechanisms. Security updates also depend on the repository's dependency graph and security-alert settings being enabled; the configuration in this repository does not create a fake substitute when those administrative prerequisites are absent.
 
 ## Security posture
 
