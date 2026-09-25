@@ -159,3 +159,26 @@ test("identical state can reappear later as a new occurrence", () => {
   assert.deepEqual(result.snapshots.map((s) => s.observation_kind), ["INITIAL", "NEW_STATE", "NEW_STATE"]);
   assert.equal(result.snapshots[2]?.state_fingerprint, result.snapshots[0]?.state_fingerprint);
 });
+
+
+test("does not compare snapshots from different regions", () => {
+  const c1 = collection("00000000-0000-0000-0000-000000000020", "2026-09-25T10:00:00.000Z");
+  const c2 = {...collection("00000000-0000-0000-0000-000000000021", "2026-09-25T10:01:00.000Z"), region_id: 10000043};
+  const p1 = page("p20", [baseOrder({order_id: 1, price: 100})]);
+  const p2 = {...page("p21", [baseOrder({order_id: 1, price: 90})]), region_id: 10000043};
+  const result = buildMarketHistory([
+    {collection:c1,pages:[p1]},
+    {collection:c2,pages:[p2]},
+  ]);
+  assert.equal(result.snapshots[1]?.observation_kind, "INITIAL");
+  assert.equal(result.order_evolution.length, 0);
+});
+
+test("relative spread uses best sell as denominator", () => {
+  const metrics = deriveMarketTypeMetrics("s", [
+    baseOrder({order_id:1,is_buy_order:true,price:90}),
+    baseOrder({order_id:2,is_buy_order:false,price:100}),
+  ])[0]!;
+  assert.equal(metrics.spread_absolute, 10);
+  assert.equal(metrics.spread_relative, 0.1);
+});
