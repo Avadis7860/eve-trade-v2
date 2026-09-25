@@ -1,7 +1,6 @@
 # EVE Trade v2
 
 [![CI](https://github.com/Avadis7860/eve-trade-v2/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Avadis7860/eve-trade-v2/actions/workflows/ci.yml)
-[![CodeQL](https://github.com/Avadis7860/eve-trade-v2/actions/workflows/codeql-analysis.yml/badge.svg)](https://github.com/Avadis7860/eve-trade-v2/security/code-scanning)
 
 EVE Trade v2 is a **market-intelligence and trading-analysis platform for EVE Online**.
 
