@@ -27,7 +27,7 @@ test(
     const run: OpportunityPipelineRun = {
       run_id: "00000000-0000-0000-0000-000000000805",
       region_id: 10000002,
-      market_collection_id: "00000000-0000-0000-0000-000000000801",
+      market_collection_id: null,
       observed_at: "2026-09-25T22:00:00Z",
       completed_at: "2026-09-25T22:00:05Z",
       status: "SUCCESS",
