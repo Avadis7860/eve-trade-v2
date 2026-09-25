@@ -129,6 +129,14 @@ test("persists raw observations, isolates characters, and keeps last complete ca
       await repository.saveCanonical(state(characterId, ids));
     }
 
+    await assert.rejects(
+      () =>
+        repository.saveObservation(
+          observation(id(101), 90000002, "WALLET_BALANCE", id(201), [999]),
+        ),
+      /violates foreign key constraint/,
+    );
+
     const rows = await pool.query(
       "SELECT character_id, balance FROM player_wallet_current ORDER BY character_id",
     );
