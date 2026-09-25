@@ -81,7 +81,34 @@ function clientFor(options: {
     },
     async fetchWalletJournalPage(id: number, page: number, _token: string) {
       assert.equal(id, characterId);
-      if (options.failJournal) throw new EsiHttpError(403, "ESI_AUTHORIZATION", false, null);
+      if (options.failJournal) {
+        throw new EsiHttpError(
+          429,
+          "HTTP 429: ESI_RATE_LIMIT",
+          true,
+          4,
+          {
+            request_id: "journal-request",
+            endpoint: "/v6/characters/{character_id}/wallet/journal/",
+            observed_at: "2026-09-25T10:00:04.000Z",
+            retry_count: 2,
+            headers: {
+              x_pages: "2",
+              last_modified: "same",
+              etag: null,
+              expires: null,
+              ratelimit_group: "wallet",
+              ratelimit_limit: "150/15m",
+              ratelimit_remaining: "10",
+              ratelimit_used: "140",
+              retry_after: "4",
+              error_limit_remain: "98",
+              error_limit_reset: "12",
+              compatibility_date: "2026-09-25",
+            },
+          },
+        );
+      }
       return result(page === 1 ? [] : [], "/v6/characters/{character_id}/wallet/journal/");
     },
     async fetchWalletTransactions(id: number, fromId: number | undefined, _token: string) {
@@ -139,6 +166,14 @@ test("one endpoint can fail without turning successful sibling components into e
   assert.equal(sync.status, "ERROR");
   assert.equal(sync.state.wallet.records?.[0], 1250000);
   assert.equal(sync.state.journal.records, null);
+  const journalError = repo.observations.find(
+    (x) => x.data_kind === "WALLET_JOURNAL" && x.status === "ERROR",
+  );
+  assert.equal(journalError?.page_identity, "page:1");
+  assert.equal(journalError?.retry_count, 2);
+  assert.equal(journalError?.headers.retry_after, "4");
+  assert.equal(journalError?.headers.ratelimit_remaining, "10");
+  assert.equal(journalError?.observed_at, "2026-09-25T10:00:04.000Z");
   assert.equal(sync.state.transactions.records?.map((x) => x.transaction_id).join(","), "1,2");
   assert.equal(sync.state.active_orders.records?.[0]?.order_id, 42);
   assert.equal(repo.observations.length, 7);
