@@ -6,18 +6,31 @@ Target product pipeline:
 
 EVE / ESI -> ingestion -> historical observations -> canonical market and player state -> trade analysis -> opportunity history -> prediction -> recommendation -> web interface.
 
-The repository is a modular monorepo. Components share contracts and domain code, but responsibilities remain explicit.
+## Phase 1
+
+Phase 1 implements the first real data path:
+
+ESI market orders -> paginated raw observations -> PostgreSQL persistence -> deterministic canonical market state.
+
+The ingestion boundary preserves provenance, observation timestamps, HTTP/cache/rate-limit metadata and raw payloads. Incomplete or errored collections are never represented as an empty valid market.
 
 ## Repository layout
 
 - apps/web — user interface
 - apps/api — application API boundary
-- apps/worker — scheduled/background processing
+- apps/worker — background processing
 - packages/contracts — stable shared contracts
 - packages/domain — pure business rules
 - packages/esi — ESI client and ingestion primitives
-- packages/db — database access
+- packages/db — PostgreSQL persistence
 - database/migrations — schema history
 - docs — architecture, master plan and development rules
 
-See docs/master-plan.md and docs/architecture.md.
+## Local validation
+
+Install dependencies with pnpm 10.15+, apply database/migrations/001_market_ingestion.sql to the PostgreSQL database configured by DATABASE_URL, then run:
+
+pnpm typecheck
+pnpm test
+
+The Phase 1 integration path is the worker ingestion function using the ESI client and market observation repository. A PostgreSQL instance is required for persistence validation.
