@@ -93,6 +93,44 @@ The project favors explicit contracts, deterministic reconstruction, provenance 
 
 ## Reproducibility
 
+### GitHub Codespaces
+
+The repository includes a dedicated Codespaces Dev Container.
+
+New Codespaces provide:
+- Node.js 24
+- pnpm 10.15.0
+- PostgreSQL 16
+- API on port 3000
+- Web on port 3001
+
+After the Dev Container finishes dependency installation, run:
+```bash
+./scripts/start-codespaces.sh
+```
+
+The bootstrap waits for PostgreSQL, applies all SQL migrations in lexical order, validates the core schema, starts API and Web, and keeps both processes under one lifecycle.
+
+Expected state:
+```text
+Node 24           OK
+pnpm 10.15.0      OK
+PostgreSQL 16     OK
+Migrations        OK
+API :3000         OK
+Web :3001         OK
+Worker            SKIPPED
+ESI calls         SKIPPED
+```
+
+Use the forwarded Web port for the product shell and the forwarded API port for GET /health. PostgreSQL remains an internal Compose service on postgres:5432 and is not forwarded.
+
+The standard bootstrap does not require EVE OAuth credentials and does not call ESI. The worker remains an explicit action.
+
+For the complete development procedure, see docs/development-workflow.md.
+
+Requirements outside Codespaces are intentionally not defined by this section.
+
 Requirements:
 
 - Node.js 24

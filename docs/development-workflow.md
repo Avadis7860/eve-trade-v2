@@ -8,6 +8,46 @@ Every working branch starts from the current `main`.
 
 A chantier is complete only when implementation, relevant tests/type checks, integration validation and documentation are complete, the pull request is merged, and `main` is revalidated.
 
+## Codespaces
+
+The repository uses .devcontainer/devcontainer.json with Docker Compose to provision the development workspace and PostgreSQL together.
+
+Supported baseline:
+```text
+Node.js 24
+pnpm 10.15.0
+PostgreSQL 16
+API :3000
+Web :3001
+```
+
+Create a Codespace from main. Once the Dev Container finishes pnpm install --frozen-lockfile, run:
+```bash
+./scripts/start-codespaces.sh
+```
+
+The bootstrap waits for PostgreSQL, applies database/migrations/*.sql in lexical order, validates the core schema, starts API and Web, checks API health, validates the Web runtime API URL, and keeps both processes attached to one lifecycle.
+
+PostgreSQL is internal as postgres:5432 and is not forwarded. Ports 3000 and 3001 are forwarded automatically.
+
+The bootstrap uses the Codespaces-provided CODESPACE_NAME and GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN values for browser API addressing; the forwarded domain is not hardcoded.
+
+Press Ctrl+C to stop API and Web. The script tracks child PIDs, removes its PID files, and can be run again because the existing migrations are idempotent.
+
+The worker is not started automatically. Launch it explicitly only when its EVE inputs are configured:
+```bash
+pnpm --filter @eve-trade/worker start
+```
+
+Repository gates remain:
+```bash
+pnpm install --frozen-lockfile
+pnpm typecheck
+pnpm test
+```
+
+The Codespaces bootstrap is development infrastructure only and does not modify CI or deploy production services.
+
 ## CI contract
 
 The repository CI is the generic workflow:
