@@ -6,7 +6,7 @@ import type {
   MarketCollection,
   MarketPageObservation,
 } from "@eve-trade/contracts";
-import { Pool } from "pg";
+import { Pool, type PoolClient } from "pg";
 
 export class MarketHistoryRepository {
   constructor(private readonly pool: Pool) {}
@@ -62,7 +62,7 @@ export class MarketHistoryRepository {
     })).map((snapshot) => ({ ...snapshot }));
   }
 
-  private async insertSnapshot(client: { query: Pool["query"] }, snapshot: MarketHistorySnapshot): Promise<void> {
+  private async insertSnapshot(client: PoolClient, snapshot: MarketHistorySnapshot): Promise<void> {
     await client.query(
       "INSERT INTO market_history_snapshots " +
       "(snapshot_id,collection_id,region_id,observed_at,status,comparison_eligible,state_fingerprint,source_last_modified," +
@@ -87,7 +87,7 @@ export class MarketHistoryRepository {
     );
   }
 
-  private async insertMetric(client: { query: Pool["query"] }, metric: MarketSnapshotTypeMetrics): Promise<void> {
+  private async insertMetric(client: PoolClient, metric: MarketSnapshotTypeMetrics): Promise<void> {
     await client.query(
       "INSERT INTO market_snapshot_type_metrics " +
       "(snapshot_id,type_id,best_buy_price,best_buy_volume,best_sell_price,best_sell_volume,spread_absolute,spread_relative,buy_visible_volume,sell_visible_volume) " +
@@ -107,7 +107,7 @@ export class MarketHistoryRepository {
     );
   }
 
-  private async insertDepth(client: { query: Pool["query"] }, level: MarketDepthLevel): Promise<void> {
+  private async insertDepth(client: PoolClient, level: MarketDepthLevel): Promise<void> {
     await client.query(
       "INSERT INTO market_snapshot_depth_levels " +
       "(snapshot_id,type_id,is_buy_order,price,volume_remain,order_count) VALUES ($1,$2,$3,$4,$5,$6)",
