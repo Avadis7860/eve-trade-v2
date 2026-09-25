@@ -20,12 +20,15 @@ async function withServer(
   callback: (baseUrl: string) => Promise<void>,
   authorizeScope?: (scope: OpportunityObservation["scope"]) => boolean,
 ): Promise<void> {
-  const server = createServer(
-    createApiHandler({
-      reader: new InMemoryReader(observations),
-      authorizeScope,
-    }),
-  );
+  const dependencies =
+    authorizeScope === undefined
+      ? { reader: new InMemoryReader(observations) }
+      : {
+          reader: new InMemoryReader(observations),
+          authorizeScope,
+        };
+
+  const server = createServer(createApiHandler(dependencies));
 
   await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
   const address = server.address();
