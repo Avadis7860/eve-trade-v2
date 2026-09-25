@@ -24,7 +24,9 @@ export function reconstructCanonicalMarket(
     throw new Error("Cannot reconstruct canonical market state without observations");
   }
 
-  const expected = pages[0].total_pages;
+  const firstPage = pages[0];
+  if (!firstPage) throw new Error("Cannot reconstruct canonical market state without a first page");
+  const expected = firstPage.total_pages;
   const completed = new Set(pages.filter((p) => p.status === "COMPLETE").map((p) => p.page));
   const hasAllPages = completed.size === expected && [...Array(expected)].every((_, i) => completed.has(i + 1));
   const hasError = pages.some((p) => p.status === "ERROR" || p.error !== null);
