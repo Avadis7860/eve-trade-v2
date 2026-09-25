@@ -31,7 +31,7 @@ export class OpportunityTrackingRepository {
         "presence,freshness_state,type_id,requested_quantity,acquisition_source," +
         "origin_region_id,origin_system_id,origin_location_id,destination_region_id,destination_system_id,destination_location_id," +
         "acquisition_snapshot_id,disposition_snapshot_id,acquisition_order_ids,disposition_order_ids," +
-        "provenance,observer,scenario_snapshot,analysis_result) " +
+        "provenance,observation_scope,scenario_snapshot,analysis_result) " +
         "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) " +
         "ON CONFLICT (observation_id) DO NOTHING",
         [
@@ -56,7 +56,7 @@ export class OpportunityTrackingRepository {
           observation.order_ids.acquisition,
           observation.order_ids.disposition,
           JSON.stringify(observation.provenance),
-          observation.observer ? JSON.stringify(observation.observer) : null,
+          JSON.stringify(observation.scope),
           JSON.stringify(observation.scenario_snapshot),
           JSON.stringify(observation.phase4_result),
         ],
@@ -96,7 +96,7 @@ export class OpportunityTrackingRepository {
   async listObservations(opportunityId: string): Promise<OpportunityObservation[]> {
     const result = await this.pool.query(
       "SELECT o.observation_id,o.opportunity_id,o.observed_at,o.phase4_contract_version," +
-      "o.phase4_scenario_fingerprint,o.presence,o.freshness_state,o.provenance,o.observer," +
+      "o.phase4_scenario_fingerprint,o.presence,o.freshness_state,o.provenance,o.observation_scope," +
       "o.scenario_snapshot,o.analysis_result,t.identity_contract_version,t.identity_payload " +
       "FROM opportunity_observations o " +
       "JOIN opportunities t ON t.opportunity_id=o.opportunity_id " +
@@ -130,7 +130,7 @@ export class OpportunityTrackingRepository {
           disposition: [...resultValue.market_evidence.disposition_order_ids],
         },
         provenance: row.provenance ?? [],
-        observer: row.observer ?? null,
+        scope: row.observation_scope,
       };
     });
   }
