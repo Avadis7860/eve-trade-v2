@@ -1,12 +1,21 @@
 const apiBase =
   window.EVE_TRADE_API_BASE ||
-  (window.location.port === "3000" ? window.location.origin : "http://localhost:3000");
+  (window.location.port === "3000"
+    ? window.location.origin
+    : "http://localhost:3000");
 
 const listElement = document.getElementById("list");
 const stateElement = document.getElementById("state");
 const detailElement = document.getElementById("detail");
 const refreshButton = document.getElementById("refresh");
 const freshnessSelect = document.getElementById("freshness");
+
+function node(tag, text, className) {
+  const element = document.createElement(tag);
+  if (text !== undefined) element.textContent = text;
+  if (className) element.className = className;
+  return element;
+}
 
 function showState(message) {
   stateElement.hidden = false;
@@ -27,34 +36,52 @@ function stateLabel(item) {
 }
 
 function renderCard(item) {
-  const article = document.createElement("article");
+  const article = node("article");
   article.className = "card";
   article.tabIndex = 0;
+
+  const header = node("div", undefined, "row");
+  header.append(
+    node("strong", `Type ${item.type_id}`),
+    node("span", stateLabel(item), "badge"),
+  );
+
+  const metrics = node("div", undefined, "row");
+  metrics.style.marginTop = "12px";
+
+  const scoreBlock = node("div");
+  scoreBlock.append(node("div", "Score", "muted"), node("div", scoreLabel(item.score), "score"));
+
+  const adviceBlock = node("div");
+  adviceBlock.style.textAlign = "right";
+  adviceBlock.append(
+    node("div", "Advice", "muted"),
+    node("strong", item.advice.kind.replaceAll("_", " ")),
+  );
+
+  metrics.append(scoreBlock, adviceBlock);
+
+  article.append(
+    header,
+    metrics,
+    node("p", `Quantity: ${item.requested_quantity}`, "muted"),
+    node("p", `Observed: ${new Date(item.observed_at).toLocaleString()}`, "muted"),
+  );
 
   const warning =
     item.data_state !== "COMPLETE" ||
     item.limitations.length > 0 ||
     item.blockers.length > 0;
 
-  article.innerHTML = `
-    <div class="row">
-      <strong>Type ${item.type_id}</strong>
-      <span class="badge">${stateLabel(item)}</span>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <div>
-        <div class="muted">Score</div>
-        <div class="score">${scoreLabel(item.score)}</div>
-      </div>
-      <div style="text-align:right">
-        <div class="muted">Advice</div>
-        <strong>${item.advice.kind.replaceAll("_", " ")}</strong>
-      </div>
-    </div>
-    <p class="muted">Quantity: ${item.requested_quantity}</p>
-    <p class="muted">Observed: ${new Date(item.observed_at).toLocaleString()}</p>
-    ${warning ? "<div class='warning'>Evidence needs attention. Review blockers and limitations in the detail view.</div>" : ""}
-  `;
+  if (warning) {
+    article.append(
+      node(
+        "div",
+        "Evidence needs attention. Review blockers and limitations in the detail view.",
+        "warning",
+      ),
+    );
+  }
 
   const open = () => void loadDetail(item.opportunity_id);
   article.addEventListener("click", open);
@@ -78,6 +105,23 @@ function renderList(payload) {
   }
 }
 
+function appendReasonList(parent, title, values, fallback) {
+  parent.append(node("h3", title));
+  const list = node("ul");
+  if (values.length === 0) {
+    list.append(node("li", fallback));
+  } else {
+    for (const value of values) {
+      const text =
+        typeof value === "string"
+          ? value
+          : `${value.code}: ${value.message}`;
+      list.append(node("li", text));
+    }
+  }
+  parent.append(list);
+}
+
 async function loadList() {
   showState("Loading opportunities…");
   detailElement.hidden = true;
@@ -87,7 +131,11 @@ async function loadList() {
     limit: "100",
   });
   const freshness = freshnessSelect.value;
-  if (freshness === "CURRENT" || freshness === "STALE" || freshness === "UNKNOWN") {
+  if (
+    freshness === "CURRENT" ||
+    freshness === "STALE" ||
+    freshness === "UNKNOWN"
+  ) {
     query.set("freshness_state", freshness);
   }
 
@@ -108,7 +156,8 @@ async function loadList() {
 
 async function loadDetail(opportunityId) {
   detailElement.hidden = false;
-  detailElement.textContent = "Loading opportunity detail…";
+  detailElement.replaceChildren();
+  detailElement.append(node("p", "Loading opportunity detail…"));
 
   try {
     const response = await fetch(
@@ -121,56 +170,94 @@ async function loadDetail(opportunityId) {
 
     const item = payload.data;
     const scoring = item.scoring;
+
+    const header = node("div", undefined, "row");
+    const identity = node("div");
+    identity.append(
+      node("div", "Opportunity", "muted"),
+      node("h2", item.opportunity_id),
+    );
+
+    const scoreBlock = node("div");
+    scoreBlock.append(
+      node("div", "Score", "muted"),
+      node("div", scoreLabel(item.score), "score"),
+    );
+
+    header.append(identity, scoreBlock);
+
+    const content = node("div");
+    content.append(
+      header,
+      node("p", `Advice: ${item.advice.kind.replaceAll("_", " ")}`),
+      node("p", `Evidence state: ${stateLabel(item)}`),
+      node(
+        "p",
+        `Simulated return: ${item.economic_result.simulated_return === null
+          ? "Unavailable"
+          : `${(Number(item.economic_result.simulated_return) * 100).toFixed(2)}%`}`,
+      ),
+      node("p", `Prediction signal: ${scoring.prediction.status}`),
+    );
+
+    appendReasonList(
+      content,
+      "Why",
+      scoring.reasons,
+      "No additional blockers or reasons.",
+    );
+
+    content.append(
+      node(
+        "p",
+        `${scoring.evidence.length} evidence references are attached to the score.`,
+        "muted",
+      ),
+    );
+
+    appendReasonList(
+      content,
+      "Limitations",
+      item.limitations,
+      "None recorded.",
+    );
+
     const warning =
       item.data_state !== "COMPLETE" ||
       item.limitations.length > 0 ||
       item.blockers.length > 0;
 
-    detailElement.innerHTML = `
-      <div class="row">
-        <div>
-          <div class="muted">Opportunity</div>
-          <h2>${item.opportunity_id}</h2>
-        </div>
-        <div>
-          <div class="muted">Score</div>
-          <div class="score">${scoreLabel(item.score)}</div>
-        </div>
-      </div>
-      <p><strong>Advice:</strong> ${item.advice.kind.replaceAll("_", " ")}</p>
-      <p><strong>Evidence state:</strong> ${stateLabel(item)}</p>
-      <p><strong>Simulated return:</strong> ${item.economic_result.simulated_return === null ? "Unavailable" : (Number(item.economic_result.simulated_return) * 100).toFixed(2) + "%"}</p>
-      <p><strong>Prediction signal:</strong> ${scoring.prediction.status}</p>
-      <h3>Why</h3>
-      <ul>
-        ${scoring.reasons.length ? scoring.reasons.map((reason) => `<li>${reason.code}: ${reason.message}</li>`).join("") : "<li>No additional blockers or reasons.</li>"}
-      </ul>
-      <h3>Evidence</h3>
-      <p class="muted">${scoring.evidence.length} evidence references are attached to the score.</p>
-      <h3>Limitations</h3>
-      <ul>
-        ${item.limitations.length ? item.limitations.map((text) => `<li>${text}</li>`).join("") : "<li>None recorded.</li>"}
-      </ul>
-      ${warning ? "<div class='warning'>This opportunity is not backed by a fully current evidence state. The limitation remains visible.</div>" : ""}
-      <details>
-        <summary>Contract evidence</summary>
-        <pre>${escapeHtml(JSON.stringify({ scope: item.scope, provenance: item.provenance, scoring }, null, 2))}</pre>
-      </details>
-    `;
+    if (warning) {
+      content.append(
+        node(
+          "div",
+          "This opportunity is not backed by a fully current evidence state. The limitation remains visible.",
+          "warning",
+        ),
+      );
+    }
+
+    const details = node("details");
+    details.append(node("summary", "Contract evidence"));
+    const pre = node("pre");
+    pre.textContent = JSON.stringify(
+      { scope: item.scope, provenance: item.provenance, scoring },
+      null,
+      2,
+    );
+    details.append(pre);
+    content.append(details);
+
+    detailElement.replaceChildren(content);
     detailElement.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
-    detailElement.textContent =
-      `Detail unavailable: ${error instanceof Error ? error.message : "unknown error"}`;
+    detailElement.replaceChildren(
+      node(
+        "p",
+        `Detail unavailable: ${error instanceof Error ? error.message : "unknown error"}`,
+      ),
+    );
   }
-}
-
-function escapeHtml(value) {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }
 
 refreshButton.addEventListener("click", () => void loadList());
