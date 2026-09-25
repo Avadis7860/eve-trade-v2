@@ -460,7 +460,7 @@ test("stale market blocks current executability", async () => {
 test("missing market freshness metadata blocks executability instead of being ignored", async () => {
   const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
   const input = request();
-  input.disposition_market!.snapshot.observed_at = null;
+  Reflect.deleteProperty(input.disposition_market!.snapshot, "observed_at");
 
   const result = analyzeTradeRequest(input);
 

@@ -16,6 +16,8 @@ La doctrine ESI reste de considérer les métadonnées de cache comme partie de 
 
 Le test dédié vérifie qu'un snapshot de marché complet dont `observed_at` est absent ne peut pas ressortir `EXECUTABLE`.
 
+Le test couvre également l'absence réelle de propriété runtime, car une donnée sérialisée/legacy peut être incomplète même si le contrat TypeScript la déclare présente.
+
 ## Incrément 02 — orchestration économique déterministe
 
 Cet incrément verrouille l'orchestration du contrat Phase 4 sans introduire d'API, de persistence d'opportunité ou d'exécution réelle.

@@ -520,13 +520,13 @@ function timeMs(value: string): number | null {
 
 function freshnessReasons(
   label: string,
-  observedAt: string | null,
-  freshUntil: string | null,
+  observedAt: string | null | undefined,
+  freshUntil: string | null | undefined,
   maxAgeSeconds: number | null,
   asOfMs: number,
 ): TradeAnalysisReason[] {
   const reasons: TradeAnalysisReason[] = [];
-  if (observedAt === null) {
+  if (observedAt === null || observedAt === undefined) {
     reasons.push(
       reason(
         "FRESHNESS_METADATA_MISSING",
@@ -559,7 +559,7 @@ function freshnessReasons(
     );
   }
 
-  if (freshUntil !== null) {
+  if (freshUntil !== null && freshUntil !== undefined) {
     const freshUntilMs = timeMs(freshUntil);
     if (freshUntilMs === null) {
       reasons.push(
