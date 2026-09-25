@@ -1,0 +1,22 @@
+{
+  "name": "@eve-trade/api",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "tsx --test --test-concurrency=1",
+    "start": "tsx src/main.ts",
+    "dev": "tsx src/main.ts"
+  },
+  "dependencies": {
+    "@eve-trade/contracts": "workspace:*",
+    "@eve-trade/db": "workspace:*",
+    "@eve-trade/domain": "workspace:*",
+    "pg": "^8.16.3"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2"
+  }
+}
