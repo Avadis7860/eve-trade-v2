@@ -313,7 +313,10 @@ export function buildPredictionDataset(
         opportunity_id: observation.opportunity_id,
         observation_id: observation.observation_id,
         feature_observed_at: observation.observed_at,
-        label_observed_at: persistence.observedAt ?? outcome?.observed_at ?? null,
+        label_observed_at:
+          [persistence.observedAt, outcome?.observed_at]
+            .filter((value): value is string => value !== null)
+            .sort()[0] ?? null,
         prediction_horizon_seconds: config.prediction_horizon_seconds,
         scope: observation.scope,
         features: {
@@ -399,6 +402,7 @@ function targetFor(
 export function splitPredictionDataset(
   dataset: PredictionDataset,
   evaluationStart: string,
+  targetKind: PredictionTargetKind = "PRESENCE_AT_HORIZON",
 ): PredictionTemporalSplit {
   const evaluationAt = timestamp(evaluationStart, "evaluation_start");
   const byStream = new Map<string, PredictionDatasetSample[]>();
@@ -424,7 +428,7 @@ export function splitPredictionDataset(
 
     for (const sample of stream) {
       const featureAt = timestamp(sample.feature_observed_at, "feature_observed_at");
-      const target = targetFor(sample, "PRESENCE_AT_HORIZON");
+      const target = targetFor(sample, targetKind);
       const labelAt = target.target_observed_at
         ? timestamp(target.target_observed_at, "target_observed_at")
         : null;
@@ -534,11 +538,12 @@ export function trainEmpiricalRateModel(
 
 export function predictEmpiricalRate(
   model: PredictionModel | null,
+  targetKind: PredictionTargetKind = "PRESENCE_AT_HORIZON",
 ): PredictionResult {
   if (model === null) {
     return {
       status: "INSUFFICIENT_DATA",
-      target_kind: "PRESENCE_AT_HORIZON",
+      target_kind: targetKind,
       model_version: null,
       dataset_id: null,
       sample_size: 0,
