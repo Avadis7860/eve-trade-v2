@@ -5,7 +5,6 @@ import { rebuildMarketHistory } from "../src/index.js";
 
 const order = (id: number, price: number): EsiMarketOrder => ({
   duration: 90,
-  escrow: 0,
   is_buy_order: false,
   issued: "2026-09-25T10:00:00.000Z",
   location_id: 60003760,
