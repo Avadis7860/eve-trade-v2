@@ -113,11 +113,11 @@ export class MarketObservationRepository {
       for (const order of state.orders) {
         await client.query(
           "INSERT INTO canonical_market_orders " +
-          "(collection_id, order_id, region_id, type_id, location_id, system_id, is_buy_order, price, volume_remain, volume_total, issued, duration, min_volume, order_range, escrow) " +
-          "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)",
+          "(collection_id, order_id, region_id, type_id, location_id, system_id, is_buy_order, price, volume_remain, volume_total, issued, duration, min_volume, order_range) " +
+          "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)",
           [state.collection_id, order.order_id, state.region_id, order.type_id, order.location_id, order.system_id,
            order.is_buy_order, order.price, order.volume_remain, order.volume_total, order.issued, order.duration,
-           order.min_volume, order.range, order.escrow],
+           order.min_volume, order.range],
         );
       }
       await client.query("COMMIT");
