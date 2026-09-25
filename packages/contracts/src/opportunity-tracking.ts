@@ -69,9 +69,10 @@ export interface OpportunityIdentity {
   payload: OpportunityIdentityPayload;
 }
 
-export interface OpportunityObserver {
-  character_id: number;
+export interface OpportunityObservationScope {
   principal_scope: PrincipalScope;
+  principal_id: number | null;
+  character_id: number | null;
   provenance: SourceProvenance | null;
 }
 
@@ -95,7 +96,7 @@ export interface OpportunityObservation {
     disposition: number[];
   };
   provenance: SourceProvenance[];
-  observer: OpportunityObserver | null;
+  scope: OpportunityObservationScope;
 }
 
 export interface OpportunityHistoryEvent {
@@ -104,6 +105,7 @@ export interface OpportunityHistoryEvent {
   previous_observation_id: string | null;
   observation_id: string;
   observed_at: string;
+  scope: OpportunityObservationScope;
 }
 
 export interface OpportunityOutcomeEvidence {
