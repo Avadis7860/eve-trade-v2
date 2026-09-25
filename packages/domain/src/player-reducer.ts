@@ -178,13 +178,16 @@ export function reconstructPlayerState(input: PlayerReconstructionInput): Canoni
 export function buildPlayerSync(input: PlayerReconstructionInput): PlayerSync {
   const state = reconstructPlayerState(input);
   const statuses = input.observations.map((x) => x.status);
+  const hasComplete = statuses.some((x) => x === "COMPLETE");
   const status =
     statuses.some((x) => x === "ERROR")
       ? "ERROR"
       : statuses.some((x) => x === "PARTIAL")
         ? "PARTIAL"
         : statuses.some((x) => x === "UNKNOWN")
-          ? "UNKNOWN"
+          ? hasComplete
+            ? "PARTIAL"
+            : "UNKNOWN"
           : "COMPLETE";
   return {
     collection_id: input.collection_id,
