@@ -25,7 +25,17 @@ Repository structure, package boundaries, development conventions and baseline t
 Complete regional market-order collection with pagination, caching/rate-limit awareness, provenance and observation timestamps.
 
 ### Phase 2 — Market history
-Normalize market observations and preserve history for price, spread, depth, liquidity and persistence analysis.
+Normalize persisted Phase 1 market collections into a deterministic, reconstructible historical layer for price, spread, depth and observable liquidity analysis.
+
+Phase 2 keeps observation time separate from semantic market state:
+- `observed_at` identifies when EVE Trade collected the collection;
+- ESI `Last-Modified` and `X-Compatibility-Date` remain source metadata;
+- complete comparable collections receive a deterministic `state_fingerprint`;
+- identical fingerprints are repeated observations, while a later return to a former fingerprint remains a new occurrence;
+- PARTIAL, ERROR and UNKNOWN collections never create a complete comparable snapshot;
+- order changes are observational (APPEARED, UNCHANGED, MODIFIED, DISAPPEARED) and never imply filled/cancelled/expired causes;
+- price, spread, depth and visible-liquidity metrics are derived only from the canonical order book;
+- derived history tables are rebuildable from Phase 1 persisted observations.
 
 ### Phase 3 — Player data
 Synchronize characters and financial/trading data: wallet, journal, transactions, assets and active orders, with explicit scope and provenance.
