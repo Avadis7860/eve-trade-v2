@@ -7,4 +7,4 @@ RUN apt-get update \
     && npm install --global pnpm@10.15.0 \
     && rm -rf /var/lib/apt/lists/*
 
-USER vscode
+USER node
