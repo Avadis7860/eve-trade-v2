@@ -47,3 +47,18 @@ CREATE TABLE IF NOT EXISTS market_snapshot_depth_levels (
 
 CREATE INDEX IF NOT EXISTS idx_market_depth_snapshot_type
   ON market_snapshot_depth_levels(snapshot_id, type_id, is_buy_order, price);
+
+
+CREATE TABLE IF NOT EXISTS market_order_evolution (
+  previous_snapshot_id UUID NOT NULL REFERENCES market_history_snapshots(snapshot_id) ON DELETE CASCADE,
+  snapshot_id UUID NOT NULL REFERENCES market_history_snapshots(snapshot_id) ON DELETE CASCADE,
+  order_id BIGINT NOT NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('APPEARED','UNCHANGED','MODIFIED','DISAPPEARED')),
+  changed_fields JSONB NOT NULL,
+  previous_order JSONB,
+  current_order JSONB,
+  PRIMARY KEY (previous_snapshot_id, snapshot_id, order_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_market_order_evolution_snapshot
+  ON market_order_evolution(snapshot_id, kind);
