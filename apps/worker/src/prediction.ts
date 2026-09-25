@@ -52,7 +52,11 @@ export async function runPredictionTrainingPipeline(
   config: PredictionPipelineConfig,
 ): Promise<PredictionPipelineResult> {
   const dataset = await materializePredictionDataset(source, config);
-  const split = splitPredictionDataset(dataset, config.evaluation_start);
+  const split = splitPredictionDataset(
+    dataset,
+    config.evaluation_start,
+    config.target_kind,
+  );
   const training = trainEmpiricalRateModel(
     dataset,
     split.training_samples,
