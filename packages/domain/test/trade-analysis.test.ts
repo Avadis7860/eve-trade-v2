@@ -457,6 +457,20 @@ test("stale market blocks current executability", async () => {
   assert.equal(result.status_reasons.some((r) => r.code === "FRESHNESS_EXCEEDED"), true);
 });
 
+test("missing market freshness metadata blocks executability instead of being ignored", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.disposition_market!.snapshot.observed_at = null;
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "DATA_UNAVAILABLE");
+  assert.equal(
+    result.status_reasons.some((r) => r.code === "FRESHNESS_METADATA_MISSING"),
+    true,
+  );
+});
+
 test("future market data is explicitly rejected", async () => {
   const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
   const result = analyzeTradeRequest(request({

@@ -1132,6 +1132,7 @@ function statusFor(
         "WALLET_UNAVAILABLE",
         "INVENTORY_UNAVAILABLE",
         "CAPITAL_UNAVAILABLE",
+        "FRESHNESS_METADATA_MISSING",
       ].includes(item.code),
     )
   ) {

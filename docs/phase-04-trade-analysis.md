@@ -1,5 +1,21 @@
 # Phase 4 — Trade Analysis
 
+## Incrément 03 — fraîcheur requise pour l'exécutabilité
+
+Cet incrément durcit la frontière entre donnée observable et analyse déclarable EXECUTABLE.
+
+### Règle
+
+Une analyse ne peut pas être EXECUTABLE lorsque la preuve nécessaire pour établir sa fraîcheur est absente ou invalide.
+
+`FRESHNESS_METADATA_MISSING` est donc un motif bloquant classé `DATA_UNAVAILABLE`. Le moteur conserve la valeur économique éventuellement calculable, mais ne transforme jamais l'absence de timestamp ou de métadonnée de fraîcheur en preuve de validité actuelle.
+
+La doctrine ESI reste de considérer les métadonnées de cache comme partie de la qualité de la donnée : `expires` indique quand une représentation mise à jour peut être disponible et `last-modified` indique la dernière mise à jour du cache. citeturn607575search0
+
+### Preuve de non-régression
+
+Le test dédié vérifie qu'un snapshot de marché complet dont `observed_at` est absent ne peut pas ressortir `EXECUTABLE`.
+
 ## Incrément 02 — orchestration économique déterministe
 
 Cet incrément verrouille l'orchestration du contrat Phase 4 sans introduire d'API, de persistence d'opportunité ou d'exécution réelle.
