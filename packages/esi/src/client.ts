@@ -16,7 +16,6 @@ function isOrder(value: unknown): value is EsiMarketOrder {
   const record = value as Record<string, unknown>;
   return (
     typeof record.duration === "number" &&
-    typeof record.escrow === "number" &&
     typeof record.is_buy_order === "boolean" &&
     typeof record.issued === "string" &&
     typeof record.location_id === "number" &&
