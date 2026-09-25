@@ -145,7 +145,12 @@ function observation(
       phase4Result.market_evidence.acquisition_provenance!,
       phase4Result.market_evidence.disposition_provenance!,
     ],
-    observer: null,
+    scope: {
+      principal_scope: "PUBLIC",
+      principal_id: null,
+      character_id: null,
+      provenance: null,
+    },
   };
 }
 
