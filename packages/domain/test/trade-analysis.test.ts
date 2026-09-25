@@ -348,7 +348,7 @@ function request(overrides: Partial<TradeAnalysisRequest> = {}): TradeAnalysisRe
       snapshot: { ...market.snapshot, snapshot_id: "snapshot-2", collection_id: "snapshot-2" },
       market: { ...market.market, collection_id: "snapshot-2" },
     },
-    player_context: playerState({ wallet: 1_000_000 }),
+    player_context: { state: playerState({ wallet: 1_000_000 }) },
     capital_policy: {
       source: "WALLET_BALANCE",
       deployable_capital: null,
@@ -421,7 +421,7 @@ test("capital policy limits the acquisition fill instead of silently overspendin
 test("wallet capital unavailable is not converted to zero", async () => {
   const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
   const result = analyzeTradeRequest(request({
-    player_context: playerState({ wallet: null }),
+    player_context: { state: playerState({ wallet: null }) },
   }));
 
   assert.equal(result.status, "DATA_UNAVAILABLE");

@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type {
   EsiAsset,
   EsiMarketOrder,
+  PlayerComponent,
   MarketAnalysisSnapshot,
   MarketLocation,
   MarketOrderRange,
@@ -726,9 +727,7 @@ function validateMarketLeg(
   return reasons;
 }
 
-function componentComplete(
-  component: PlayerAnalysisContext["state"]["wallet"] | PlayerAnalysisContext["state"]["assets"],
-): boolean {
+function componentComplete<T>(component: PlayerComponent<T>): component is PlayerComponent<T> & { records: T[] } {
   return (
     component.quality.availability === "COMPLETE" &&
     component.quality.coverage === "COMPLETE" &&
