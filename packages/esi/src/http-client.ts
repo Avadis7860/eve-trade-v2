@@ -32,15 +32,54 @@ export interface EsiHttpResult<T> {
   headers: EsiResponseMetadata;
 }
 
+const DEFAULT_COMPATIBILITY_DATE = "2026-09-25";
+
+export interface EsiHttpErrorContext {
+  request_id: string;
+  endpoint: string;
+  observed_at: string;
+  retry_count: number;
+  headers: EsiResponseMetadata;
+}
+
+function emptyHeaders(compatibilityDate: string): EsiResponseMetadata {
+  return {
+    x_pages: null,
+    last_modified: null,
+    etag: null,
+    expires: null,
+    ratelimit_group: null,
+    ratelimit_limit: null,
+    ratelimit_remaining: null,
+    ratelimit_used: null,
+    retry_after: null,
+    error_limit_remain: null,
+    error_limit_reset: null,
+    compatibility_date: compatibilityDate,
+  };
+}
+
 export class EsiHttpError extends Error {
+  public readonly request_id: string | null;
+  public readonly endpoint: string | null;
+  public readonly observed_at: string | null;
+  public readonly retry_count: number;
+  public readonly headers: EsiResponseMetadata;
+
   constructor(
     public readonly status: number,
     message: string,
     public readonly retryable: boolean,
     public readonly retryAfterSeconds: number | null,
+    context: Partial<EsiHttpErrorContext> = {},
   ) {
     super(message);
     this.name = "EsiHttpError";
+    this.request_id = context.request_id ?? null;
+    this.endpoint = context.endpoint ?? null;
+    this.observed_at = context.observed_at ?? null;
+    this.retry_count = context.retry_count ?? 0;
+    this.headers = context.headers ?? emptyHeaders(DEFAULT_COMPATIBILITY_DATE);
   }
 }
 
@@ -83,8 +122,11 @@ function headersOf(response: Response, compatibilityDate: string): EsiResponseMe
   };
 }
 
-function compatibilityDateFor(now: Date): string {
-  return new Date(now.getTime() - 11 * 60 * 60 * 1000).toISOString().slice(0, 10);
+function compatibilityDateOf(value: string): string {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value) || !Number.isFinite(Date.parse(value + "T00:00:00Z"))) {
+    throw new Error("compatibilityDate must be YYYY-MM-DD");
+  }
+  return value;
 }
 
 export class EsiHttpClient {
@@ -111,7 +153,7 @@ export class EsiHttpClient {
     }
 
     let retryCount = 0;
-    const compatibilityDate = this.options.compatibilityDate ?? compatibilityDateFor(this.now());
+    const compatibilityDate = compatibilityDateOf(this.options.compatibilityDate ?? DEFAULT_COMPATIBILITY_DATE);
 
     while (true) {
       const observedAt = this.now().toISOString();
@@ -142,7 +184,19 @@ export class EsiHttpClient {
 
         const retryAfter = retryAfterSeconds(response);
         const retryable = response.status === 420 || response.status === 429 || response.status >= 500;
-        const error = new EsiHttpError(response.status, `HTTP ${response.status}: ${errorCode(response.status)}`, retryable, retryAfter);
+        const error = new EsiHttpError(
+          response.status,
+          `HTTP ${response.status}: ${errorCode(response.status)}`,
+          retryable,
+          retryAfter,
+          {
+            request_id: requestId,
+            endpoint,
+            observed_at: observedAt,
+            retry_count: retryCount,
+            headers: headersOf(response, compatibilityDate),
+          },
+        );
 
         if (!retryable || retryCount >= this.maxRetries) throw error;
 
@@ -158,7 +212,19 @@ export class EsiHttpClient {
       } catch (error) {
         if (error instanceof EsiHttpError) throw error;
         if (retryCount >= this.maxRetries) {
-          throw new EsiHttpError(0, "ESI_NETWORK_ERROR", true, null);
+          throw new EsiHttpError(
+            0,
+            "ESI_NETWORK_ERROR",
+            true,
+            null,
+            {
+              request_id: requestId,
+              endpoint,
+              observed_at: observedAt,
+              retry_count: retryCount,
+              headers: emptyHeaders(compatibilityDate),
+            },
+          );
         }
         await this.sleep(this.retryBaseDelayMs * 2 ** retryCount);
         retryCount += 1;
