@@ -9,9 +9,14 @@ import type {
   ApiOpportunitySummary,
   OpportunityObservation,
   OpportunityObservationScope,
+  OpportunityPipelineRun,
 } from "@eve-trade/contracts";
 import { projectDetail, projectSummary } from "./projection.js";
 import type { OpportunityReadModel, ScopeAuthorizer } from "./read-model.js";
+
+type PipelineAwareReadModel = OpportunityReadModel & {
+  getLatestPipelineRun?: () => Promise<OpportunityPipelineRun | null>;
+};
 
 const jsonHeaders = {
   "content-type": "application/json; charset=utf-8",
@@ -215,6 +220,8 @@ export function createApiHandler({
   reader,
   authorizeScope = (scope) => scope.principal_scope === "PUBLIC",
 }: ApiServerDependencies) {
+  const pipelineReader = reader as PipelineAwareReadModel;
+
   return async (
     request: IncomingMessage,
     response: ServerResponse,
@@ -275,6 +282,9 @@ export function createApiHandler({
           .filter((item) => filters.adviceKind === null || item.advice.kind === filters.adviceKind);
 
         const page = projected.slice(filters.offset, filters.offset + filters.limit);
+        const pipelineRun = pipelineReader.getLatestPipelineRun
+          ? await pipelineReader.getLatestPipelineRun()
+          : null;
 
         const payload: ApiListResponse<ApiOpportunitySummary> = {
           contract_version: "phase-08.1",
@@ -283,6 +293,19 @@ export function createApiHandler({
             total: projected.length,
             offset: filters.offset,
             limit: filters.limit,
+            pipeline: pipelineRun
+              ? {
+                  status: pipelineRun.status,
+                  region_id: pipelineRun.region_id,
+                  market_collection_id: pipelineRun.market_collection_id,
+                  observed_at: pipelineRun.observed_at,
+                  completed_at: pipelineRun.completed_at,
+                  candidates_generated: pipelineRun.candidates_generated,
+                  analyses_produced: pipelineRun.analyses_produced,
+                  observations_persisted: pipelineRun.observations_persisted,
+                  error: pipelineRun.error,
+                }
+              : null,
           },
         };
         sendJson(response, 200, payload);

@@ -35,6 +35,25 @@ function stateLabel(item) {
   return item.data_state.replaceAll("_", " ");
 }
 
+function pipelineStateMessage(pipeline) {
+  if (!pipeline) {
+    return "No opportunity pipeline run is available yet; the opportunity surface has not been populated.";
+  }
+
+  switch (pipeline.status) {
+    case "NO_CANDIDATES":
+      return "The latest complete market evidence produced no eligible opportunity candidates.";
+    case "INPUT_UNAVAILABLE":
+      return "The latest opportunity pipeline could not evaluate the market because required evidence is unavailable or incomplete.";
+    case "ERROR":
+      return "The latest opportunity pipeline run failed. Existing observations may be stale; no new valid result was produced.";
+    case "SUCCESS":
+      return null;
+    default:
+      return "The opportunity pipeline state is unknown.";
+  }
+}
+
 function renderCard(item) {
   const article = node("article");
   article.className = "card";
@@ -94,12 +113,19 @@ function renderCard(item) {
 function renderList(payload) {
   listElement.replaceChildren();
 
+  const pipelineMessage = pipelineStateMessage(payload.data.pipeline);
+
   if (payload.data.items.length === 0) {
-    showState("No opportunity is available in the requested evidence scope.");
+    showState(
+      pipelineMessage ??
+        "No opportunity is available in the requested evidence scope.",
+    );
     return;
   }
 
-  clearState();
+  if (pipelineMessage) showState(pipelineMessage);
+  else clearState();
+
   for (const item of payload.data.items) {
     listElement.append(renderCard(item));
   }

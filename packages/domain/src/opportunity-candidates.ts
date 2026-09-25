@@ -1,7 +1,6 @@
 import type {
   CanonicalMarketState,
   EsiMarketOrder,
-  MarketLocation,
   MarketOrderRange,
   TradeScenario,
 } from "@eve-trade/contracts";
@@ -13,14 +12,6 @@ export interface OpportunityCandidatePolicy {
 export const DEFAULT_OPPORTUNITY_CANDIDATE_POLICY: OpportunityCandidatePolicy = {
   execution_order_range: "region",
 };
-
-function location(order: EsiMarketOrder): MarketLocation {
-  return {
-    region_id: order.system_id > 0 ? 0 : 0,
-    system_id: order.system_id,
-    location_id: order.location_id,
-  };
-}
 
 export function generateMarketTradeCandidates(
   market: CanonicalMarketState,
