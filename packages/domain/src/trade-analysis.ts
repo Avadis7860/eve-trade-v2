@@ -887,7 +887,21 @@ function resolveInventoryEvidence(
     return { reasons: [], records: null };
   }
 
-  if (player === null || !assetComponentComplete(player.state.assets)) {
+  if (player === null) {
+    return {
+      reasons: [
+        reason(
+          "INVENTORY_UNAVAILABLE",
+          "explicit asset_ids require complete and healthy player asset evidence",
+          true,
+        ),
+      ],
+      records: null,
+    };
+  }
+
+  const assets = player.state.assets;
+  if (!assetComponentComplete(assets)) {
     return {
       reasons: [
         reason(
@@ -901,7 +915,7 @@ function resolveInventoryEvidence(
   }
 
   const selected = inventory.asset_ids
-    .map((id) => player.state.assets.records.find((asset) => asset.item_id === id) ?? null);
+    .map((id) => assets.records.find((asset) => asset.item_id === id) ?? null);
 
   if (selected.some((asset) => asset === null)) {
     return {
