@@ -16,6 +16,8 @@ export type EconomicEvaluationState =
 
 export type EconomicExecutionState = "OBSERVED" | "PROJECTED";
 
+export type EconomicOperationStateKind = "PLANNED" | "OBSERVED" | "PROJECTED";
+
 export type EconomicEvidenceKind =
   | "TRANSACTION"
   | "ORDER"
@@ -133,6 +135,7 @@ export interface EconomicOperation {
   remaining_quantity: number;
   lifecycle_state: EconomicOperationLifecycleState;
   evaluation_state: EconomicEvaluationState;
+  state_kind: EconomicOperationStateKind;
   acquisition_mode: "TAKER_AGAINST_SELL" | "EXISTING_INVENTORY";
   disposition_mode: "TAKER_AGAINST_BUY" | "MAKER_SELL";
   acquisition_evidence: EconomicAcquisitionRecord[];
