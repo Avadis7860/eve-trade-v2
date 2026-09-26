@@ -4,6 +4,7 @@ import type {
   MarketOrderRange,
   TradeScenario,
 } from "@eve-trade/contracts";
+import { parseMarketOrderRange } from "./trade-analysis.js";
 
 export type OpportunityCandidateStrategy =
   | "MARKET_TO_MARKET"
@@ -26,6 +27,21 @@ export const DEFAULT_OPPORTUNITY_CANDIDATE_POLICY: OpportunityCandidatePolicy = 
   max_candidate_quantity: null,
   strategy: "MARKET_TO_MARKET",
 };
+
+function buyCanReachStation(
+  order: EsiMarketOrder,
+  station: { system_id: number; location_id: number },
+): "YES" | "NO" | "UNKNOWN" {
+  if (order.location_id === station.location_id) return "YES";
+  const range = parseMarketOrderRange(order.range);
+  if (range === null) return "UNKNOWN";
+  if (range === "station") return "NO";
+  if (range === "solarsystem") {
+    return order.system_id === station.system_id ? "YES" : "NO";
+  }
+  if (range === "region") return "YES";
+  return order.system_id === station.system_id ? "YES" : "UNKNOWN";
+}
 
 function depthQuantity(
   orders: EsiMarketOrder[],
@@ -118,23 +134,22 @@ export function generateMarketTradeCandidates(
           return [];
         }
 
-        const localBestBuy = depthQuantity(
-          orders.filter(
-            (order) =>
-              order.is_buy_order &&
-              order.volume_remain > 0 &&
-              order.system_id === systemId &&
-              order.location_id === locationId,
-          ),
-          true,
-          1,
-        );
-        if (
-          localBestBuy !== null &&
-          localBestBuy.first.price >= targetDepth.limitPrice
-        ) {
-          return [];
+        let crossingBuy = false;
+        let uncertainBuy = false;
+        for (const order of orders) {
+          if (
+            !order.is_buy_order ||
+            order.volume_remain <= 0 ||
+            order.price < targetDepth.limitPrice
+          ) continue;
+          const reach = buyCanReachStation(order, {
+            system_id: systemId,
+            location_id: locationId,
+          });
+          if (reach === "YES") crossingBuy = true;
+          if (reach === "UNKNOWN") uncertainBuy = true;
         }
+        if (crossingBuy || uncertainBuy) return [];
 
         const quantity = Math.min(acquisitionDepth.quantity, quantityCap);
         if (!Number.isSafeInteger(quantity) || quantity <= 0) return [];
