@@ -200,6 +200,8 @@ export async function runOpportunityPipeline(
     candidates_generated: 0,
     analyses_produced: 0,
     observations_persisted: 0,
+    economic_operations_created: 0,
+    economic_operation_observations_persisted: 0,
     error: null,
   };
 
@@ -256,6 +258,9 @@ export async function runOpportunityPipeline(
           planned.operation,
           planned.observationId,
         );
+        run.economic_operations_created = (run.economic_operations_created ?? 0) + 1;
+        run.economic_operation_observations_persisted =
+          (run.economic_operation_observations_persisted ?? 0) + 1;
       }
     }
 
