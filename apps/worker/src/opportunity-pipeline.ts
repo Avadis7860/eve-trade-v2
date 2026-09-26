@@ -1,10 +1,13 @@
 import { randomUUID } from "node:crypto";
 import type {
   CanonicalMarketState,
+  EconomicOperation,
   LogisticsContext,
   MarketHistorySnapshot,
   MarketOrderRange,
   OpportunityPipelineRun,
+  RecordAcquisitionInput,
+  RecordDispositionInput,
   TradeAnalysisRequest,
 } from "@eve-trade/contracts";
 import {
@@ -31,6 +34,7 @@ export interface OpportunityPipelineOptions {
   executionOrderRange?: MarketOrderRange;
   maxDepthLevels?: number;
   candidateStrategy?: "MARKET_TO_MARKET" | "BUY_AND_RELIST";
+  evidenceResolver?: EconomicOperationEvidenceResolver;
 }
 
 type OpportunityTrackingSink = Pick<
@@ -38,6 +42,18 @@ type OpportunityTrackingSink = Pick<
   "saveObservation" | "savePipelineRun"
 >;
 type EconomicOperationSink = Pick<EconomicOperationRepository, "save">;
+
+export interface EconomicOperationEvidenceResolution {
+  acquisition: RecordAcquisitionInput | null;
+  disposition: RecordDispositionInput | null;
+}
+
+export interface EconomicOperationEvidenceResolver {
+  resolve(
+    operation: EconomicOperation,
+    scenario: TradeAnalysisRequest["scenario"],
+  ): Promise<EconomicOperationEvidenceResolution>;
+}
 
 function errorValue(error: unknown): { code: string; message: string } {
   return {
@@ -261,6 +277,40 @@ export async function runOpportunityPipeline(
         run.economic_operations_created = (run.economic_operations_created ?? 0) + 1;
         run.economic_operation_observations_persisted =
           (run.economic_operation_observations_persisted ?? 0) + 1;
+
+        if (options.evidenceResolver) {
+          let reconciled = planned.operation;
+          const evidence = await options.evidenceResolver.resolve(
+            reconciled,
+            scenario,
+          );
+
+          if (evidence.acquisition !== null) {
+            reconciled = recordObservedAcquisition(
+              reconciled,
+              evidence.acquisition,
+            );
+            await operationRepository.save(
+              reconciled,
+              economicOperationObservationId(reconciled),
+            );
+            run.economic_operation_observations_persisted =
+              (run.economic_operation_observations_persisted ?? 0) + 1;
+          }
+
+          if (evidence.disposition !== null) {
+            reconciled = recordObservedDisposition(
+              reconciled,
+              evidence.disposition,
+            );
+            await operationRepository.save(
+              reconciled,
+              economicOperationObservationId(reconciled),
+            );
+            run.economic_operation_observations_persisted =
+              (run.economic_operation_observations_persisted ?? 0) + 1;
+          }
+        }
       }
     }
 
