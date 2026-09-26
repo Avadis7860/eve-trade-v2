@@ -17,6 +17,7 @@ const migrations = [
   "002_market_history.sql",
   "003_player_data.sql",
   "004_opportunity_tracking.sql",
+  "009_pipeline_operation_counts.sql",
 ].map((name) =>
   join(dirname(fileURLToPath(import.meta.url)), "../../../database/migrations", name),
 );
