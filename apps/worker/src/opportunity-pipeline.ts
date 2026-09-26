@@ -14,6 +14,7 @@ import {
   economicOperationId,
   economicOperationObservationId,
   generateMarketTradeCandidates,
+  DEFAULT_MAX_DEPTH_LEVELS,
   planAcquisition,
 } from "@eve-trade/domain";
 import type {
@@ -28,6 +29,7 @@ export interface OpportunityPipelineOptions {
   salesTaxRate: number | null;
   brokerFeeRate?: number | null;
   executionOrderRange?: MarketOrderRange;
+  maxDepthLevels?: number;
   candidateStrategy?: "MARKET_TO_MARKET" | "BUY_AND_RELIST";
 }
 
@@ -203,9 +205,9 @@ export async function runOpportunityPipeline(
 
     const candidates = generateMarketTradeCandidates(market, {
       execution_order_range: options.executionOrderRange ?? "region",
-      max_depth_levels: 1,
+      max_depth_levels: options.maxDepthLevels ?? DEFAULT_MAX_DEPTH_LEVELS,
       maker_sell_buffer_levels: 1,
-      strategy: options.candidateStrategy ?? "MARKET_TO_MARKET",
+      strategy: options.candidateStrategy ?? "BUY_AND_RELIST",
     });
     run.candidates_generated = candidates.length;
 
