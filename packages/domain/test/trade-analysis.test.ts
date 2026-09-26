@@ -727,7 +727,7 @@ test("maker projection ignores incompatible station-local buy orders", async () 
   });
   input.disposition_market!.market.orders = [
     baseOrder({ order_id: 100, is_buy_order: true, price: 120, range: "station", location_id: 60008494, system_id: 30002187 }),
-    baseOrder({ order_id: 101, is_buy_order: true, price: 100, range: "station", price: 100 }),
+    baseOrder({ order_id: 101, is_buy_order: true, price: 100, range: "station" }),
   ];
 
   const result = analyzeTradeRequest(input);
