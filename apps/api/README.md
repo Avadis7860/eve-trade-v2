@@ -37,7 +37,9 @@ Public routes:
 
 - `GET /health`
 - `GET /api/v1/opportunities`
-- `GET /api/v1/opportunities/:opportunityId`\n- `GET /api/v1/operations`\n- `GET /api/v1/operations/:operationId`
+- `GET /api/v1/opportunities/:opportunityId`
+- `GET /api/v1/operations`
+- `GET /api/v1/operations/:operationId`
 
 The API composes persisted opportunity observations with the deterministic scoring domain function. It also exposes persisted EconomicOperation state and history through a read-only boundary. It does not duplicate domain lifecycle rules.
 
