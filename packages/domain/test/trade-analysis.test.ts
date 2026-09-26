@@ -682,19 +682,23 @@ test("maker modes are reserved and never executable", async () => {
   assert.equal(result.status_reasons.some((r) => r.code === "MAKER_MODE_UNSUPPORTED"), true);
 });
 
-test("maker disposition mode is not silently simulated as a taker sale", async () => {
+test("maker disposition remains a projection and never becomes a synthetic fill", async () => {
   const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
   const input = request();
   input.scenario.disposition.market.execution_mode = "MAKER_SELL";
+  input.fee_context.sales_tax_rate = 0;
+  input.fee_context.broker_fee_rate = 0;
+  input.fee_context.source = "EXPLICIT";
 
   const result = analyzeTradeRequest(input);
 
-  assert.equal(result.status, "NOT_EXECUTABLE");
+  assert.equal(result.status, "PROJECTED");
   assert.equal(result.disposition_leg.filled_quantity, 0);
-  assert.equal(result.disposition_leg.simulated_fills.length, 0);
+  assert.deepEqual(result.disposition_leg.simulated_fills, []);
+  assert.equal(result.market_evidence.disposition_order_ids.length, 0);
   assert.equal(
     result.status_reasons.some((r) => r.code === "MAKER_MODE_UNSUPPORTED"),
-    true,
+    false,
   );
 });
 
