@@ -30,6 +30,42 @@ function sameParent(row: Record<string, unknown>, operation: EconomicOperation):
   );
 }
 
+function normalizeOperationState(operation: EconomicOperation): EconomicOperation {
+  return {
+    ...operation,
+    created_at: new Date(operation.created_at).toISOString(),
+    updated_at: new Date(operation.updated_at).toISOString(),
+    acquisition_evidence: operation.acquisition_evidence.map((record) => ({
+      ...record,
+      observed_at: new Date(record.observed_at).toISOString(),
+      evidence: record.evidence.map((item) => ({
+        ...item,
+        observed_at: new Date(item.observed_at).toISOString(),
+      })),
+    })),
+    disposition_evidence: operation.disposition_evidence.map((record) => ({
+      ...record,
+      observed_at: new Date(record.observed_at).toISOString(),
+      evidence: record.evidence.map((item) => ({
+        ...item,
+        observed_at: new Date(item.observed_at).toISOString(),
+      })),
+    })),
+    projected_disposition: operation.projected_disposition
+      ? {
+          ...operation.projected_disposition,
+          projected_at: new Date(operation.projected_disposition.projected_at).toISOString(),
+        }
+      : null,
+    position: operation.position
+      ? {
+          ...operation.position,
+          opened_at: new Date(operation.position.opened_at).toISOString(),
+        }
+      : null,
+  };
+}
+
 export class EconomicOperationRepository {
   constructor(private readonly pool: Pool) {}
 
@@ -147,7 +183,9 @@ export class EconomicOperationRepository {
       "WHERE operation_id=$1 ORDER BY observed_at DESC, observation_id DESC LIMIT 1",
       [operationId],
     );
-    return result.rows[0]?.operation_state ?? null;
+    return result.rows[0]?.operation_state
+      ? normalizeOperationState(result.rows[0].operation_state as EconomicOperation)
+      : null;
   }
 
   async listAll(): Promise<EconomicOperation[]> {
@@ -156,7 +194,7 @@ export class EconomicOperationRepository {
       "FROM economic_operation_observations " +
       "ORDER BY operation_id, observed_at DESC, observation_id DESC",
     );
-    return result.rows.map((row) => row.operation_state as EconomicOperation);
+    return result.rows.map((row) => normalizeOperationState(row.operation_state as EconomicOperation));
   }
 
   async listObservations(operationId: string): Promise<EconomicOperation[]> {
