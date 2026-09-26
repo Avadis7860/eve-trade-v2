@@ -469,14 +469,7 @@ function adviceFor(
     return {
       kind: "ACTIONABLE_WITH_LIMITATION",
       evidence_level: "LIMITED",
-      reasons: [
-        ...reasons,
-        reason(
-          "DISPOSITION_PROJECTED",
-          "maker sell disposition is projected and has no fill evidence",
-          false,
-        ),
-      ],
+      reasons: [...reasons],
       blockers,
       limitations: ["maker sell disposition is projected; execution remains unobserved"],
     };
@@ -517,8 +510,19 @@ export function scoreOpportunity(input: ScoringInput): ScoringResult {
   const dataQuality = dataQualityComponent(input, input.policy, evidence);
   const prediction = predictionComponent(input, input.policy);
   const components = [economics, execution, dataQuality, prediction.component];
+  const scoringReasons = [
+    ...sharedInputReasons(input),
+    ...components.flatMap((item) => item.reasons),
+    ...(input.trade_analysis.status === "PROJECTED"
+      ? [reason(
+          "DISPOSITION_PROJECTED",
+          "maker sell disposition is projected and has no fill evidence",
+          false,
+        )]
+      : []),
+  ];
   const reasons = uniqueSorted(
-    [...sharedInputReasons(input), ...components.flatMap((item) => item.reasons)],
+    scoringReasons,
     (item) => `${item.code}:${item.message}:${item.blocking}`,
   );
   const score = sharedInputReasons(input).some((item) => item.blocking) ? null : computeScore(components, input.policy);
