@@ -325,3 +325,26 @@ The following remain outside the implemented economic truth:
 The market worker's Phase 08.3 production path uses `BUY_AND_RELIST`. Broker-fee configuration is read from `BROKER_FEE_RATE`; sales tax continues to come from `SALES_TAX_RATE`. Missing fee inputs remain explicit and block a complete projected economic result rather than becoming zero.
 
 The default domain candidate policy remains `MARKET_TO_MARKET` so the generic candidate generator remains backwards-compatible; production behavior is selected explicitly by the worker configuration.
+
+## Correction contract — audit reprise
+
+### Spatial semantics
+BUY_AND_RELIST is station-local. Acquisition depth, maker target depth and maker execution location must come from the same station. A price observed in another station is not promoted into a station-local projected disposition.
+
+MAKER_SELL carries an explicit execution location and order range. Visible BUY evidence is considered through each BUY order's own range relative to the maker location; an unclassifiable range blocks a deterministic projection.
+
+### Production depth
+The domain candidate engine is depth-bounded. The documented default is five visible levels, with one additional buffer level for a projected maker target. The worker uses this bounded policy by default and selects BUY_AND_RELIST; MARKET_TO_MARKET remains an explicit alternative.
+
+### Observation and provenance
+A planned PUBLIC operation remains PUBLIC. Later character-scoped evidence can establish an observed acquisition and add provenance without changing operation identity or implicitly assigning ownership to the observing character.
+
+Operation state is explicitly classified as PLANNED, OBSERVED or PROJECTED. API projections therefore use state_at and state_kind; a projected timestamp is never labeled observed_at.
+
+### Market intelligence
+Liquidity coverage is side-specific: SELL coverage describes visible acquisition liquidity and BUY coverage describes visible disposition liquidity. Historical change and volatility order observations by observed_at, using snapshot ID only as a deterministic tie-breaker.
+
+Book anomalies use descriptive names for observable deltas. Snapshot changes do not by themselves prove a fill, cancellation, sweep, wall placement, actor intent or causality.
+
+### Persistence integrity
+The operation parent remains immutable and the observation history remains append-only. Replaying an existing observation_id is idempotent only when its canonical payload is identical; the same ID with a different payload is rejected.
