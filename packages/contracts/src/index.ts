@@ -6,3 +6,4 @@ export * from "./opportunity-pipeline.js";
 export * from "./prediction.js";
 export * from "./scoring.js";
 export * from "./api.js";
+export * from "./economic-evidence.js";
