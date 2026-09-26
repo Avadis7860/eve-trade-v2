@@ -43,10 +43,14 @@ export function deriveMarketLiquidity(input: LiquidityInput): MarketLiquiditySna
     best_sell_depth: sellDepth,
     best_buy_depth: buyDepth,
     requested_quantity: requested,
-    quantity_coverage:
+    sell_quantity_coverage:
       requested === null || requested <= 0
         ? null
         : Math.min(1, sellDepth / requested),
+    buy_quantity_coverage:
+      requested === null || requested <= 0
+        ? null
+        : Math.min(1, buyDepth / requested),
     depth_levels_considered: depthLimit,
     status: "COMPLETE",
     provenance: input.provenance,
@@ -109,10 +113,12 @@ export function deriveTradeDayCoverage(
   };
 }
 
+export type HistoricalPricePoint = MarketSnapshotTypeMetrics & { observed_at: string };
+
 export function deriveHistoricalPricePosition(
   typeId: number,
   referencePrice: number | null,
-  history: MarketSnapshotTypeMetrics[],
+  history: HistoricalPricePoint[],
 ): {
   type_id: number;
   reference_price: number | null;
@@ -125,11 +131,31 @@ export function deriveHistoricalPricePosition(
   regime: HistoricalPriceRegime;
   status: "COMPLETE" | "PARTIAL" | "UNKNOWN";
 } {
-  const points = history
-    .filter((item) => item.type_id === typeId && item.best_sell_price !== null)
-    .map((item) => item.best_sell_price!)
-    .filter((value) => Number.isFinite(value) && value > 0);
-  if (referencePrice === null || !Number.isFinite(referencePrice) || referencePrice <= 0 || points.length === 0) {
+  const validPoints = history.filter(
+    (item) =>
+      item.type_id === typeId &&
+      item.best_sell_price !== null &&
+      Number.isFinite(item.best_sell_price) &&
+      item.best_sell_price > 0,
+  );
+  const points = validPoints.map((item) => item.best_sell_price!);
+  const recent = validPoints
+    .filter((item) => Number.isFinite(Date.parse(item.observed_at)))
+    .sort(
+      (a, b) =>
+        Date.parse(a.observed_at) - Date.parse(b.observed_at) ||
+        a.snapshot_id.localeCompare(b.snapshot_id),
+    );
+  const hasInvalidTimestamp = validPoints.some(
+    (item) => !Number.isFinite(Date.parse(item.observed_at)),
+  );
+
+  if (
+    referencePrice === null ||
+    !Number.isFinite(referencePrice) ||
+    referencePrice <= 0 ||
+    points.length === 0
+  ) {
     return {
       type_id: typeId,
       reference_price: referencePrice,
@@ -143,35 +169,45 @@ export function deriveHistoricalPricePosition(
       status: points.length === 0 ? "UNKNOWN" : "PARTIAL",
     };
   }
+
   const sorted = [...points].sort((a, b) => a - b);
   const min = sorted[0]!;
   const max = sorted[sorted.length - 1]!;
   const lessOrEqual = sorted.filter((value) => value <= referencePrice).length;
   const percentile = lessOrEqual / sorted.length;
-  const rangePosition = max === min ? 0.5 : Math.min(1, Math.max(0, (referencePrice - min) / (max - min)));
-  const recent = [...history]
-    .filter((item) => item.type_id === typeId && item.best_sell_price !== null)
-    .sort((a, b) => a.snapshot_id.localeCompare(b.snapshot_id));
-  const previous = recent.length >= 2 ? recent[recent.length - 2]!.best_sell_price : null;
-  const recentChange = previous !== null && previous > 0 ? (referencePrice - previous) / previous : null;
-  const returns = recent.slice(1).map((item, index) => {
-    const prev = recent[index]!.best_sell_price!;
-    return prev > 0 ? (item.best_sell_price! - prev) / prev : null;
-  }).filter((value): value is number => value !== null && Number.isFinite(value));
-  const volatility = returns.length > 1
-    ? Math.sqrt(returns.reduce((sum, value) => sum + value * value, 0) / returns.length)
-    : null;
-  const priorPoints = sorted;
-  const priorMin = Math.min(...priorPoints);
-  const priorMax = Math.max(...priorPoints);
+  const rangePosition =
+    max === min
+      ? 0.5
+      : Math.min(1, Math.max(0, (referencePrice - min) / (max - min)));
+  const previous =
+    recent.length >= 2 ? recent[recent.length - 2]!.best_sell_price : null;
+  const recentChange =
+    previous !== null && previous > 0
+      ? (referencePrice - previous) / previous
+      : null;
+  const returns = recent
+    .slice(1)
+    .map((item, index) => {
+      const prev = recent[index]!.best_sell_price!;
+      return prev > 0 ? (item.best_sell_price! - prev) / prev : null;
+    })
+    .filter((value): value is number => value !== null && Number.isFinite(value));
+  const volatility =
+    returns.length > 1
+      ? Math.sqrt(
+          returns.reduce((sum, value) => sum + value * value, 0) /
+            returns.length,
+        )
+      : null;
   const regime: HistoricalPriceRegime =
-    referencePrice < priorMin || referencePrice > priorMax
+    referencePrice < min || referencePrice > max
       ? "BREAKOUT"
       : rangePosition < 0.2
         ? "LOW_RANGE"
         : rangePosition > 0.8
           ? "HIGH_RANGE"
           : "NORMAL_RANGE";
+
   return {
     type_id: typeId,
     reference_price: referencePrice,
@@ -182,7 +218,7 @@ export function deriveHistoricalPricePosition(
     recent_change: recentChange,
     volatility,
     regime,
-    status: "COMPLETE",
+    status: hasInvalidTimestamp ? "PARTIAL" : "COMPLETE",
   };
 }
 
@@ -215,17 +251,16 @@ export function detectBookAnomalies(input: BookAnomalyInput): MarketBookAnomaly[
     provenance: input.provenance,
   };
   if (sellChange !== null && sellChange <= -volumeThreshold) {
-    results.push({ ...base, kind: "LIQUIDITY_DRAIN", comparison_basis: "visible sell volume", method: "relative change against previous complete snapshot" });
-    results.push({ ...base, kind: "SUPPLY_COLLAPSE", comparison_basis: "visible sell volume", method: "relative change against previous complete snapshot" });
-  }
-  if (buyChange !== null && buyChange >= volumeThreshold) {
-    results.push({ ...base, kind: "DEMAND_SURGE", comparison_basis: "visible buy volume", method: "relative change against previous complete snapshot" });
+    results.push({ ...base, kind: "SELL_LIQUIDITY_DROP", comparison_basis: "visible sell volume", method: "relative change against previous complete snapshot" });
   }
   if (buyChange !== null && buyChange <= -volumeThreshold) {
-    results.push({ ...base, kind: "LARGE_BUY_SWEEP", comparison_basis: "visible buy volume", method: "relative change against previous complete snapshot" });
+    results.push({ ...base, kind: "BUY_LIQUIDITY_DROP", comparison_basis: "visible buy volume", method: "relative change against previous complete snapshot" });
   }
   if (sellChange !== null && sellChange >= volumeThreshold) {
-    results.push({ ...base, kind: "LARGE_SELL_WALL", comparison_basis: "visible sell volume", method: "relative change against previous complete snapshot" });
+    results.push({ ...base, kind: "SELL_LIQUIDITY_INCREASE", comparison_basis: "visible sell volume", method: "relative change against previous complete snapshot" });
+  }
+  if (buyChange !== null && buyChange >= volumeThreshold) {
+    results.push({ ...base, kind: "BUY_LIQUIDITY_INCREASE", comparison_basis: "visible buy volume", method: "relative change against previous complete snapshot" });
   }
   if (sellPriceChange !== null && Math.abs(sellPriceChange) >= priceThreshold) {
     results.push({ ...base, kind: "PRICE_GAP", comparison_basis: "best sell price", method: "relative price change against previous complete snapshot" });
