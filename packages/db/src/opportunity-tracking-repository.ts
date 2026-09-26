@@ -76,7 +76,7 @@ export class OpportunityTrackingRepository {
     await this.pool.query(
       "INSERT INTO opportunity_pipeline_runs " +
       "(run_id,region_id,market_collection_id,observed_at,completed_at,status,candidates_generated,analyses_produced,observations_persisted,error) " +
-      "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) " +
+      "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) " +
       "ON CONFLICT (run_id) DO UPDATE SET " +
       "region_id=EXCLUDED.region_id,market_collection_id=EXCLUDED.market_collection_id,observed_at=EXCLUDED.observed_at," +
       "completed_at=EXCLUDED.completed_at,status=EXCLUDED.status,candidates_generated=EXCLUDED.candidates_generated," +
@@ -91,6 +91,8 @@ export class OpportunityTrackingRepository {
         run.candidates_generated,
         run.analyses_produced,
         run.observations_persisted,
+        run.economic_operations_created ?? 0,
+        run.economic_operation_observations_persisted ?? 0,
         run.error ? JSON.stringify(run.error) : null,
       ],
     );
@@ -99,7 +101,7 @@ export class OpportunityTrackingRepository {
   async getLatestPipelineRun(): Promise<OpportunityPipelineRun | null> {
     const result = await this.pool.query(
       "SELECT run_id,region_id,market_collection_id,observed_at,completed_at,status," +
-      "candidates_generated,analyses_produced,observations_persisted,error " +
+      "candidates_generated,analyses_produced,observations_persisted,economic_operations_created,economic_operation_observations_persisted,error " +
       "FROM opportunity_pipeline_runs ORDER BY observed_at DESC,run_id DESC LIMIT 1",
     );
     const row = result.rows[0];
@@ -114,6 +116,8 @@ export class OpportunityTrackingRepository {
       candidates_generated: Number(row.candidates_generated),
       analyses_produced: Number(row.analyses_produced),
       observations_persisted: Number(row.observations_persisted),
+      economic_operations_created: Number(row.economic_operations_created ?? 0),
+      economic_operation_observations_persisted: Number(row.economic_operation_observations_persisted ?? 0),
       error: row.error ?? null,
     };
   }
