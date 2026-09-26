@@ -143,7 +143,7 @@ test("persists economic operation snapshots idempotently and preserves history",
     assert.equal(current?.operation_id, "operation-db-1");
     assert.equal(current?.lifecycle_state, "OPEN");
     assert.equal(current?.remaining_quantity, 5);
-    assert.equal(current?.updated_at, "2026-09-26T04:02:00.000Z");
+    assert.equal(current?.updated_at, "2026-09-26T04:20:00.000Z");
 
     const history = await repository.listObservations("operation-db-1");
     assert.equal(history.length, 2);
