@@ -19,10 +19,34 @@ function operationHash(value: unknown): string {
   return createHash("sha256").update(JSON.stringify(value), "utf8").digest("hex");
 }
 
-export function economicOperationId(opportunityId: string): string {
+export interface EconomicOperationIdentityInput {
+  type_id: number;
+  initial_quantity: number;
+  acquisition_mode: EconomicOperation["acquisition_mode"];
+  disposition_mode: EconomicOperation["disposition_mode"];
+  origin: {
+    region_id: number;
+    system_id: number;
+    location_id: number;
+  };
+  destination: {
+    region_id: number;
+    system_id: number;
+    location_id: number;
+  };
+  created_at: string;
+}
+
+export function economicOperationId(input: EconomicOperationIdentityInput): string {
   return "operation:" + operationHash({
     contract_version: ECONOMIC_OPERATION_CONTRACT_VERSION,
-    opportunity_id: opportunityId,
+    type_id: input.type_id,
+    initial_quantity: input.initial_quantity,
+    acquisition_mode: input.acquisition_mode,
+    disposition_mode: input.disposition_mode,
+    origin: input.origin,
+    destination: input.destination,
+    created_at: new Date(input.created_at).toISOString(),
   });
 }
 
