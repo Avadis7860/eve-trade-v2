@@ -25,7 +25,6 @@ function sameParent(row: Record<string, unknown>, operation: EconomicOperation):
     row.acquisition_mode === operation.acquisition_mode &&
     row.disposition_mode === operation.disposition_mode &&
     sameJson(row.scope, operation.scope) &&
-    sameJson(row.provenance, operation.provenance) &&
     new Date(row.created_at as string).toISOString() ===
       new Date(operation.created_at).toISOString()
   );
