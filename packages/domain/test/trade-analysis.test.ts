@@ -707,6 +707,7 @@ test("maker projection ignores incompatible station-local buy orders", async () 
   const input = request({
     scenario: {
       ...request().scenario,
+      destination: location,
       disposition: {
         ...request().scenario.disposition,
         market: {
@@ -740,6 +741,7 @@ test("maker projection rejects a compatible visible buy above the maker price", 
   const input = request({
     scenario: {
       ...request().scenario,
+      destination: location,
       disposition: {
         ...request().scenario.disposition,
         market: {
