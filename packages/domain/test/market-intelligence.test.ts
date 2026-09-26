@@ -56,6 +56,24 @@ test("depth and quantity coverage are derived from the visible order book", () =
   assert.equal(result.depth_levels_considered, 2);
 });
 
+test("quantity coverage is side-specific for acquisition and disposition", () => {
+  const result = deriveMarketLiquidity({
+    snapshot_id: "s-side",
+    type_id: 34,
+    orders: [
+      order({ order_id: 30, price: 100, volume_remain: 8 }),
+      order({ order_id: 31, is_buy_order: true, price: 120, volume_remain: 50 }),
+      order({ order_id: 32, is_buy_order: true, price: 119, volume_remain: 10 }),
+    ],
+    requested_quantity: 15,
+    depth_levels: 1,
+    provenance,
+  });
+
+  assert.equal(result.sell_quantity_coverage, 8 / 15);
+  assert.equal(result.buy_quantity_coverage, 1);
+});
+
 test("trade days are liquidity coverage, never a guaranteed depletion forecast", () => {
   const result = deriveTradeDayCoverage(1000, 250);
   assert.equal(result.trade_days, 4);
