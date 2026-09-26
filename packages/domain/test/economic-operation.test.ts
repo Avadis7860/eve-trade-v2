@@ -156,6 +156,7 @@ test("terminal result exists only after full observed disposition", () => {
   assert.equal(completed.result.terminal_result, 1_880);
   assert.equal(completed.result.terminal_return, 0.188);
   assert.equal(completed.position, null);
+  assert.equal(completed.state_kind, "OBSERVED");
 });
 
 test("unknown acquisition cost keeps economic evaluation explicit", () => {
