@@ -6,6 +6,7 @@ import {
   planAcquisition,
   projectMakerSellDisposition,
   recordObservedAcquisition,
+  economicOperationId,
   recordObservedDisposition,
 } from "../src/economic-operation.js";
 import type { EconomicEvidence } from "@eve-trade/contracts";
@@ -49,6 +50,43 @@ function operation(quantity = 10_000) {
     created_at: "2026-09-26T04:00:00Z",
   });
 }
+
+test("economic operation identity ignores opportunity identity", () => {
+  const input = {
+    type_id: 34,
+    initial_quantity: 10,
+    acquisition_mode: "TAKER_AGAINST_SELL" as const,
+    disposition_mode: "MAKER_SELL" as const,
+    origin: { region_id: 10000002, system_id: 30000142, location_id: 60003760 },
+    destination: { region_id: 10000002, system_id: 30000142, location_id: 60003760 },
+    created_at: "2026-09-26T04:00:00Z",
+  };
+
+  const first = createEconomicOperation({
+    operation_id: economicOperationId(input),
+    opportunity_id: "opportunity-a",
+    type_id: 34,
+    initial_quantity: 10,
+    acquisition_mode: "TAKER_AGAINST_SELL",
+    disposition_mode: "MAKER_SELL",
+    scope: {
+      principal_scope: "PUBLIC",
+      principal_id: null,
+      character_id: null,
+      provenance: null,
+    },
+    provenance: [],
+    created_at: input.created_at,
+  });
+  const second = createEconomicOperation({
+    ...first,
+    operation_id: economicOperationId(input),
+    opportunity_id: "opportunity-b",
+  });
+
+  assert.equal(first.operation_id, second.operation_id);
+  assert.notEqual(first.opportunity_id, second.opportunity_id);
+});
 
 test("operation identity and lifecycle are independent of order evidence", () => {
   const created = operation();
