@@ -92,6 +92,8 @@ export interface ApiOpportunityPipelineStatus {
   candidates_generated: number;
   analyses_produced: number;
   observations_persisted: number;
+  economic_operations_created: number;
+  economic_operation_observations_persisted: number;
   error: OpportunityPipelineRun["error"];
 }
 
