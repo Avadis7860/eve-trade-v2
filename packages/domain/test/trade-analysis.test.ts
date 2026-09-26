@@ -66,6 +66,30 @@ test("known ESI market ranges are parsed while unknown source values remain unkn
   assert.equal(parseMarketOrderRange("future-esi-value"), null);
 });
 
+test("taker execution skips an ESI order when available quantity is below min_volume", async () => {
+  const { simulateTakerAgainstSell } = await import("../src/trade-analysis.js");
+  const input = request();
+  const result = simulateTakerAgainstSell({
+    snapshot: input.acquisition_market!,
+    type_id: 34,
+    execution_location: location,
+    quantity: 5,
+    limit_price: 101,
+    order_range: "station",
+    orders: [
+      baseOrder({ order_id: 10, price: 100, volume_remain: 5, min_volume: 10 }),
+      baseOrder({ order_id: 11, price: 101, volume_remain: 5, min_volume: 1 }),
+    ],
+  });
+
+  assert.equal(result.filled_quantity, 5);
+  assert.deepEqual(
+    result.simulated_fills.map((fill) => fill.order_id),
+    [11],
+  );
+  assert.equal(result.simulated_fills[0]?.quantity, 5);
+});
+
 test("taker against sell crosses multiple levels but settles at the taker buy price", () => {
   const result = simulateTakerAgainstSell({
     snapshot: snapshot([
