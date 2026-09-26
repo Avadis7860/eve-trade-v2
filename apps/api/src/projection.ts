@@ -56,6 +56,12 @@ export function projectSummary(
         observation.phase4_result.economic_result.simulated_return,
       capital_required:
         observation.phase4_result.economic_result.capital_required,
+      projected_net_result:
+        observation.phase4_result.economic_result.projected_net_result ?? null,
+      projected_return:
+        observation.phase4_result.economic_result.projected_return ?? null,
+      projected_disposition_proceeds:
+        observation.phase4_result.economic_result.projected_disposition_proceeds ?? null,
     },
     score: {
       availability: scoring.availability,
@@ -85,5 +91,48 @@ export function projectDetail(
     scenario: observation.scenario_snapshot,
     trade_analysis: observation.phase4_result,
     scoring,
+  };
+}
+
+
+import type {
+  ApiEconomicOperationSummary,
+  ApiEconomicOperationDetail,
+  EconomicOperation,
+} from "@eve-trade/contracts";
+
+export function projectEconomicOperation(
+  operation: EconomicOperation,
+): ApiEconomicOperationSummary {
+  return {
+    contract_version: "phase-08.3",
+    operation_id: operation.operation_id,
+    opportunity_id: operation.opportunity_id,
+    type_id: operation.type_id,
+    initial_quantity: operation.initial_quantity,
+    acquired_quantity: operation.acquired_quantity,
+    unacquired_quantity: operation.unacquired_quantity,
+    disposed_quantity: operation.disposed_quantity,
+    remaining_quantity: operation.remaining_quantity,
+    lifecycle_state: operation.lifecycle_state,
+    evaluation_state: operation.evaluation_state,
+    acquisition_mode: operation.acquisition_mode,
+    disposition_mode: operation.disposition_mode,
+    result: operation.result,
+    position: operation.position,
+    scope: operation.scope,
+    provenance: [...operation.provenance],
+    observed_at: operation.updated_at,
+  };
+}
+
+export function projectEconomicOperationDetail(
+  operation: EconomicOperation,
+  history: EconomicOperation[],
+): ApiEconomicOperationDetail {
+  return {
+    ...projectEconomicOperation(operation),
+    operation,
+    history: [...history],
   };
 }

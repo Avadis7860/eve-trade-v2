@@ -35,7 +35,7 @@
 <body>
   <header>
     <div class="muted">EVE Trade v2</div>
-    <h1>Opportunities</h1>
+    <h1 id="pageTitle">Opportunities</h1>
     <p class="muted">Observed and derived evidence exposed through the API. No order execution is available here.</p>
   </header>
   <main>
@@ -49,6 +49,8 @@
           <option value="UNKNOWN">Unknown</option>
         </select>
       </label>
+      <button id="viewOpportunities" type="button">Opportunities</button>
+      <button id="viewOperations" type="button">Operations</button>
       <button id="refresh">Refresh</button>
     </div>
     <div id="state" class="state" hidden></div>

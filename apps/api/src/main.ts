@@ -1,6 +1,9 @@
 import { createServer } from "node:http";
 import { Pool } from "pg";
-import { OpportunityTrackingRepository } from "@eve-trade/db";
+import {
+  EconomicOperationRepository,
+  OpportunityTrackingRepository,
+} from "@eve-trade/db";
 import { createApiHandler } from "./server.js";
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -16,7 +19,13 @@ if (!Number.isInteger(port) || port <= 0 || port > 65535) {
 const host = process.env.HOST ?? "0.0.0.0";
 const pool = new Pool({ connectionString: databaseUrl });
 const repository = new OpportunityTrackingRepository(pool);
-const server = createServer(createApiHandler({ reader: repository }));
+const operationRepository = new EconomicOperationRepository(pool);
+const server = createServer(
+  createApiHandler({
+    reader: repository,
+    operationReader: operationRepository,
+  }),
+);
 
 server.listen(port, host, () => {
   process.stdout.write(`EVE Trade v2 API listening on http://${host}:${port}\n`);

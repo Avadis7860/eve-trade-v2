@@ -202,7 +202,10 @@ function economicsComponent(
   policy: ScoringPolicy,
   evidence: ScoringEvidenceRef[],
 ): ScoringComponent {
-  const value = analysis.economic_result.simulated_return;
+  const value =
+    analysis.status === "PROJECTED"
+      ? analysis.economic_result.projected_return ?? null
+      : analysis.economic_result.simulated_return;
   if (value === null || !Number.isFinite(value)) {
     return component("ECONOMICS", "BLOCKED", policy.weights.economics, null, [
       reason("ECONOMIC_RESULT_MISSING", "simulated return is unavailable", true),
@@ -229,7 +232,10 @@ function executionRatio(analysis: TradeAnalysisResult): number | null {
   if (!Number.isInteger(requested) || requested <= 0 ||
       analysis.disposition_leg.requested_quantity !== requested) return null;
   const acquisition = analysis.acquisition_leg.filled_quantity / requested;
-  const disposition = analysis.disposition_leg.filled_quantity / requested;
+  const disposition =
+    analysis.status === "PROJECTED"
+      ? acquisition
+      : analysis.disposition_leg.filled_quantity / requested;
   return Number.isFinite(acquisition) && Number.isFinite(disposition)
     ? clamp(Math.min(acquisition, disposition), 0, 1)
     : null;
@@ -435,8 +441,11 @@ function adviceFor(
     };
   }
 
-  const simulatedReturn = input.trade_analysis.economic_result.simulated_return;
-  if (simulatedReturn === null || simulatedReturn <= 0) {
+  const economicReturn =
+    input.trade_analysis.status === "PROJECTED"
+      ? input.trade_analysis.economic_result.projected_return ?? null
+      : input.trade_analysis.economic_result.simulated_return;
+  if (economicReturn === null || economicReturn <= 0) {
     return {
       kind: "NO_ACTION",
       evidence_level: "DIRECT",
@@ -454,6 +463,22 @@ function adviceFor(
       reasons: [...reasons, reason("EXECUTION_PARTIAL", "positive economics are not backed by full requested-quantity execution", false)],
       blockers,
       limitations: ["full requested quantity is not currently executable"],
+    };
+  }
+  if (input.trade_analysis.status === "PROJECTED") {
+    return {
+      kind: "ACTIONABLE_WITH_LIMITATION",
+      evidence_level: "LIMITED",
+      reasons: [
+        ...reasons,
+        reason(
+          "DISPOSITION_PROJECTED",
+          "maker sell disposition is projected and has no fill evidence",
+          false,
+        ),
+      ],
+      blockers,
+      limitations: ["maker sell disposition is projected; execution remains unobserved"],
     };
   }
   if (prediction.status === "ABSENT" || prediction.status === "IGNORED" || prediction.status === "INVALID") {

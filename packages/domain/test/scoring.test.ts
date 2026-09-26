@@ -476,3 +476,57 @@ test("fingerprint is reconstructible from the same input and result", () => {
     result.fingerprint,
   );
 });
+
+
+test("projected maker sell economics can be scored without pretending the disposition filled", () => {
+  const projectedAnalysis: TradeAnalysisResult = {
+    ...analysis("maker-projection", null, "PROJECTED", 10),
+    acquisition_leg: {
+      ...analysis("maker-projection", null, "PROJECTED", 10).acquisition_leg,
+      status: "EXECUTABLE",
+    },
+    disposition_leg: {
+      execution_mode: "MAKER_SELL",
+      requested_quantity: 10,
+      filled_quantity: 0,
+      remaining_quantity: 10,
+      simulated_fills: [],
+      status: "PROJECTED",
+      reasons: [],
+    },
+    economic_result: {
+      ...analysis("maker-projection", null, "PROJECTED", 10).economic_result,
+      simulated_net_result: null,
+      simulated_return: null,
+      projected_disposition_proceeds: 1200,
+      projected_fees_total: 60,
+      projected_logistics_cost: 0,
+      projected_net_result: 140,
+      projected_return: 0.14,
+    },
+  };
+
+  const opportunityValue = opportunity();
+  opportunityValue.phase4_result = projectedAnalysis;
+  opportunityValue.scenario_snapshot.disposition.market.execution_mode = "MAKER_SELL";
+  opportunityValue.phase4_contract_version = projectedAnalysis.contract_version;
+  opportunityValue.phase4_scenario_fingerprint = projectedAnalysis.scenario_fingerprint;
+
+  const result = scoreOpportunity({
+    opportunity: opportunityValue,
+    trade_analysis: projectedAnalysis,
+    prediction: null,
+    policy: SCORING_POLICY_V1,
+  });
+
+  assert.equal(result.availability, "AVAILABLE");
+  assert.equal(result.score !== null, true);
+  assert.equal(result.advice.kind, "ACTIONABLE_WITH_LIMITATION");
+  assert.equal(
+    result.advice.limitations.includes(
+      "maker sell disposition is projected; execution remains unobserved",
+    ),
+    true,
+  );
+  assert.equal(result.reasons.some((item) => item.code === "DISPOSITION_PROJECTED"), true);
+});

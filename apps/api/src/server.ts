@@ -2,6 +2,8 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { randomUUID } from "node:crypto";
 import type {
   ApiDetailResponse,
+  ApiEconomicOperationListResponse,
+  ApiEconomicOperationDetailResponse,
   ApiErrorBody,
   ApiHealthResponse,
   ApiListResponse,
@@ -11,8 +13,8 @@ import type {
   OpportunityObservationScope,
   OpportunityPipelineRun,
 } from "@eve-trade/contracts";
-import { projectDetail, projectSummary } from "./projection.js";
-import type { OpportunityReadModel, ScopeAuthorizer } from "./read-model.js";
+import { projectDetail, projectSummary, projectEconomicOperation, projectEconomicOperationDetail } from "./projection.js";
+import type { EconomicOperationReadModel, OpportunityReadModel, ScopeAuthorizer } from "./read-model.js";
 
 type PipelineAwareReadModel = OpportunityReadModel & {
   getLatestPipelineRun?: () => Promise<OpportunityPipelineRun | null>;
@@ -213,11 +215,13 @@ function latestByOpportunity(
 
 export interface ApiServerDependencies {
   reader: OpportunityReadModel;
+  operationReader?: EconomicOperationReadModel | null;
   authorizeScope?: ScopeAuthorizer;
 }
 
 export function createApiHandler({
   reader,
+  operationReader = null,
   authorizeScope = (scope) => scope.principal_scope === "PUBLIC",
 }: ApiServerDependencies) {
   const pipelineReader = reader as PipelineAwareReadModel;
@@ -259,6 +263,67 @@ export function createApiHandler({
       const filters = parseFilters(url);
       if (filters === null) {
         sendError(response, 400, "BAD_REQUEST", "query parameters are invalid");
+        return;
+      }
+
+      if (url.pathname === "/api/v1/operations") {
+        if (operationReader === null) {
+          sendError(response, 404, "NOT_FOUND", "operation read model is not available");
+          return;
+        }
+        if (filters.presence !== null || filters.freshness !== null || filters.adviceKind !== null) {
+          sendError(response, 400, "BAD_REQUEST", "operation routes do not accept opportunity-only filters");
+          return;
+        }
+        if (!authorizeScope(filters.scope)) {
+          sendError(response, 403, "FORBIDDEN", "requested principal scope is not authorized");
+          return;
+        }
+        const operations = (await operationReader.listAll())
+          .filter((item) => sameScope(item.scope, filters.scope))
+          .filter((item) => filters.typeId === null || item.type_id === filters.typeId)
+          .sort((a, b) => b.updated_at.localeCompare(a.updated_at) || b.operation_id.localeCompare(a.operation_id))
+          .map(projectEconomicOperation);
+        const page = operations.slice(filters.offset, filters.offset + filters.limit);
+        const payload: ApiEconomicOperationListResponse = {
+          contract_version: "phase-08.3",
+          data: {
+            items: page,
+            total: operations.length,
+            offset: filters.offset,
+            limit: filters.limit,
+          },
+        };
+        sendJson(response, 200, payload);
+        return;
+      }
+
+      const operationMatch = /^\/api\/v1\/operations\/([^/]+)$/.exec(url.pathname);
+      if (operationMatch) {
+        if (operationReader === null) {
+          sendError(response, 404, "NOT_FOUND", "operation read model is not available");
+          return;
+        }
+        if (filters.presence !== null || filters.freshness !== null || filters.adviceKind !== null) {
+          sendError(response, 400, "BAD_REQUEST", "operation routes do not accept opportunity-only filters");
+          return;
+        }
+        if (!authorizeScope(filters.scope)) {
+          sendError(response, 403, "FORBIDDEN", "requested principal scope is not authorized");
+          return;
+        }
+        const operationId = decodeURIComponent(operationMatch[1]!);
+        const operation = await operationReader.get(operationId);
+        if (operation === null || !sameScope(operation.scope, filters.scope)) {
+          sendError(response, 404, "NOT_FOUND", "operation was not found in the requested scope");
+          return;
+        }
+        const history = await operationReader.listObservations(operationId);
+        const payload: ApiEconomicOperationDetailResponse = {
+          contract_version: "phase-08.3",
+          data: projectEconomicOperationDetail(operation, history),
+        };
+        sendJson(response, 200, payload);
         return;
       }
 

@@ -18,6 +18,7 @@ export type TradeExecutionMode =
 
 export type TradeAnalysisStatus =
   | "EXECUTABLE"
+  | "PROJECTED"
   | "NOT_EXECUTABLE"
   | "STALE"
   | "PARTIAL"
@@ -210,6 +211,11 @@ export interface EconomicResult {
   simulated_net_result: number | null;
   capital_required: number | null;
   simulated_return: number | null;
+  projected_disposition_proceeds?: number | null;
+  projected_fees_total?: number | null;
+  projected_logistics_cost?: number | null;
+  projected_net_result?: number | null;
+  projected_return?: number | null;
 }
 
 export interface TradeAnalysisResult {
@@ -223,5 +229,9 @@ export interface TradeAnalysisResult {
   capital_context: CapitalContext;
   fee_context: FeeContext;
   market_evidence: MarketEvidence;
+  market_intelligence?: {
+    acquisition: import("./market-intelligence.js").MarketLiquiditySnapshot | null;
+    disposition: import("./market-intelligence.js").MarketLiquiditySnapshot | null;
+  };
   economic_result: EconomicResult;
 }

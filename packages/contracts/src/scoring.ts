@@ -62,7 +62,8 @@ export type ScoringReasonCode =
   | "PREDICTION_SCOPE_MISMATCH"
   | "PREDICTION_USED"
   | "SCORE_AVAILABLE"
-  | "SCORE_UNAVAILABLE";
+  | "SCORE_UNAVAILABLE"
+  | "DISPOSITION_PROJECTED";
 
 export interface ScoringReason {
   code: ScoringReasonCode;

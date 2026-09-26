@@ -39,3 +39,16 @@ Player observations retain raw payload, provenance, endpoint/page identity, obse
 - indexes for opportunity/time and type/time history.
 
 The Phase 5 tables preserve the original scenario and Phase 4 analytical payload so derived history can be reconstructed without introducing a new external source.
+007_economic_operations.sql creates:
+- independent EconomicOperation identities;
+- append-only operation observations with lifecycle, quantity, result, evidence, scope and provenance;
+- indexes for operation/opportunity and operation history.
+
+Operation observations are derived/persisted state and do not represent order execution unless their explicit evidence proves it.
+
+
+008_economic_operation_immutability.sql creates:
+- database-level immutability triggers for economic operation identities;
+- database-level immutability triggers for economic operation observations.
+
+The operation history can therefore only advance by inserting a new observation. UPDATE/DELETE attempts are rejected by PostgreSQL.

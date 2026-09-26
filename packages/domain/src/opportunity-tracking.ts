@@ -168,11 +168,17 @@ export function createOpportunityObservation(
 }
 
 function comparableNet(result: TradeAnalysisResult): number | null {
-  const value = result.economic_result.simulated_net_result;
-  return value !== null && Number.isFinite(value) ? value : null;
+  const value =
+    result.status === "PROJECTED"
+      ? result.economic_result.projected_net_result
+      : result.economic_result.simulated_net_result;
+  return value !== null && value !== undefined && Number.isFinite(value) ? value : null;
 }
 
 function fulfilledQuantity(result: TradeAnalysisResult): number {
+  if (result.status === "PROJECTED") {
+    return result.acquisition_leg.filled_quantity;
+  }
   return Math.min(
     result.acquisition_leg.filled_quantity,
     result.disposition_leg.filled_quantity,

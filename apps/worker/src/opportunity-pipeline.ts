@@ -9,23 +9,33 @@ import type {
 } from "@eve-trade/contracts";
 import {
   analyzeTradeRequest,
+  createEconomicOperation,
   createOpportunityObservation,
+  economicOperationId,
+  economicOperationObservationId,
   generateMarketTradeCandidates,
+  planAcquisition,
 } from "@eve-trade/domain";
-import { OpportunityTrackingRepository } from "@eve-trade/db";
+import type {
+  EconomicOperationRepository,
+  OpportunityTrackingRepository,
+} from "@eve-trade/db";
 
 export interface OpportunityPipelineOptions {
   regionId: number;
   observedAt: string;
   deployableCapital: number | null;
   salesTaxRate: number | null;
+  brokerFeeRate?: number | null;
   executionOrderRange?: MarketOrderRange;
+  candidateStrategy?: "MARKET_TO_MARKET" | "BUY_AND_RELIST";
 }
 
 type OpportunityTrackingSink = Pick<
   OpportunityTrackingRepository,
   "saveObservation" | "savePipelineRun"
 >;
+type EconomicOperationSink = Pick<EconomicOperationRepository, "save">;
 
 function errorValue(error: unknown): { code: string; message: string } {
   return {
@@ -76,6 +86,7 @@ function requestFor(
   market: CanonicalMarketState,
   options: OpportunityPipelineOptions,
 ): TradeAnalysisRequest {
+  const makerSell = scenario.disposition.market.execution_mode === "MAKER_SELL";
   return {
     scenario,
     analysis_context: {
@@ -98,17 +109,62 @@ function requestFor(
       escrow_is_separate: true,
     },
     fee_context: {
-      broker_fee_rate: null,
+      broker_fee_rate: options.brokerFeeRate ?? null,
       sales_tax_rate: options.salesTaxRate,
-      source: options.salesTaxRate === null ? "UNKNOWN" : "EXPLICIT",
+      source:
+        options.salesTaxRate === null || (makerSell && options.brokerFeeRate === null)
+          ? "UNKNOWN"
+          : "EXPLICIT",
     },
     logistics_context: logisticsFor(scenario.origin, scenario.destination),
     constraints: {
       max_quantity: null,
       max_capital: null,
       min_quantity: null,
-      execution_modes: ["TAKER_AGAINST_SELL", "TAKER_AGAINST_BUY"],
+      execution_modes: makerSell
+        ? ["TAKER_AGAINST_SELL", "MAKER_SELL"]
+        : ["TAKER_AGAINST_SELL", "TAKER_AGAINST_BUY"],
     },
+  };
+}
+
+function createPlannedOperation(
+  scenario: TradeAnalysisRequest["scenario"],
+  opportunityId: string,
+  result: ReturnType<typeof analyzeTradeRequest>,
+  observedAt: string,
+) {
+  const acquisitionProvenance = result.market_evidence.acquisition_provenance;
+  const dispositionProvenance = result.market_evidence.disposition_provenance;
+  const provenance = [
+    ...(acquisitionProvenance ? [acquisitionProvenance] : []),
+    ...(dispositionProvenance &&
+    JSON.stringify(dispositionProvenance) !== JSON.stringify(acquisitionProvenance)
+      ? [dispositionProvenance]
+      : []),
+  ];
+
+  const operation = createEconomicOperation({
+    operation_id: economicOperationId(opportunityId),
+    opportunity_id: opportunityId,
+    type_id: scenario.type_id,
+    initial_quantity: scenario.requested_quantity,
+    acquisition_mode: "TAKER_AGAINST_SELL",
+    disposition_mode: scenario.disposition.market.execution_mode,
+    scope: {
+      principal_scope: "PUBLIC",
+      principal_id: null,
+      character_id: null,
+      provenance: acquisitionProvenance,
+    },
+    provenance,
+    created_at: observedAt,
+  });
+
+  const planned = planAcquisition(operation, observedAt);
+  return {
+    operation: planned,
+    observationId: economicOperationObservationId(planned),
   };
 }
 
@@ -117,6 +173,7 @@ export async function runOpportunityPipeline(
   historySnapshot: MarketHistorySnapshot | null,
   repository: OpportunityTrackingSink,
   options: OpportunityPipelineOptions,
+  operationRepository: EconomicOperationSink | null = null,
 ): Promise<OpportunityPipelineRun> {
   const run: OpportunityPipelineRun = {
     run_id: randomUUID(),
@@ -141,6 +198,9 @@ export async function runOpportunityPipeline(
 
     const candidates = generateMarketTradeCandidates(market, {
       execution_order_range: options.executionOrderRange ?? "region",
+      max_depth_levels: 1,
+      maker_sell_buffer_levels: 1,
+      strategy: options.candidateStrategy ?? "MARKET_TO_MARKET",
     });
     run.candidates_generated = candidates.length;
 
@@ -165,6 +225,23 @@ export async function runOpportunityPipeline(
       });
       await repository.saveObservation(observation);
       run.observations_persisted += 1;
+
+      if (
+        operationRepository !== null &&
+        result.status === "PROJECTED" &&
+        result.acquisition_leg.filled_quantity === scenario.requested_quantity
+      ) {
+        const planned = createPlannedOperation(
+          scenario,
+          observation.opportunity_id,
+          result,
+          options.observedAt,
+        );
+        await operationRepository.save(
+          planned.operation,
+          planned.observationId,
+        );
+      }
     }
 
     run.status = "SUCCESS";

@@ -5,13 +5,49 @@ import type {
   TradeScenario,
 } from "@eve-trade/contracts";
 
+export type OpportunityCandidateStrategy =
+  | "MARKET_TO_MARKET"
+  | "BUY_AND_RELIST";
+
 export interface OpportunityCandidatePolicy {
   execution_order_range: MarketOrderRange;
+  max_depth_levels?: number;
+  maker_sell_buffer_levels?: number;
+  max_candidate_quantity?: number | null;
+  strategy?: OpportunityCandidateStrategy;
 }
+
+const DEFAULT_MAX_DEPTH_LEVELS = 5;
 
 export const DEFAULT_OPPORTUNITY_CANDIDATE_POLICY: OpportunityCandidatePolicy = {
   execution_order_range: "region",
+  max_depth_levels: DEFAULT_MAX_DEPTH_LEVELS,
+  maker_sell_buffer_levels: 1,
+  max_candidate_quantity: null,
+  strategy: "MARKET_TO_MARKET",
 };
+
+function depthQuantity(
+  orders: EsiMarketOrder[],
+  isBuy: boolean,
+  maxLevels: number,
+): { quantity: number; limitPrice: number; first: EsiMarketOrder } | null {
+  const sorted = orders
+    .filter((order) => order.is_buy_order === isBuy && order.volume_remain > 0)
+    .sort((a, b) =>
+      isBuy
+        ? b.price - a.price || a.order_id - b.order_id
+        : a.price - b.price || a.order_id - b.order_id,
+    )
+    .slice(0, maxLevels);
+  if (sorted.length === 0) return null;
+  const quantity = sorted.reduce((sum, order) => sum + order.volume_remain, 0);
+  return {
+    quantity,
+    limitPrice: sorted[sorted.length - 1]!.price,
+    first: sorted[0]!,
+  };
+}
 
 export function generateMarketTradeCandidates(
   market: CanonicalMarketState,
@@ -24,6 +60,19 @@ export function generateMarketTradeCandidates(
     return [];
   }
 
+  const requestedDepth = policy.max_depth_levels ?? DEFAULT_MAX_DEPTH_LEVELS;
+  const maxDepth = Number.isSafeInteger(requestedDepth)
+    ? Math.max(1, requestedDepth)
+    : DEFAULT_MAX_DEPTH_LEVELS;
+  const quantityCap =
+    policy.max_candidate_quantity === undefined || policy.max_candidate_quantity === null
+      ? Number.MAX_SAFE_INTEGER
+      : Math.max(1, Math.floor(policy.max_candidate_quantity));
+  const bufferLevels = policy.maker_sell_buffer_levels === undefined
+    ? 1
+    : Math.max(1, Math.floor(policy.maker_sell_buffer_levels));
+  const strategy = policy.strategy ?? "MARKET_TO_MARKET";
+
   const byType = new Map<number, EsiMarketOrder[]>();
   for (const order of market.orders) {
     if (order.volume_remain <= 0) continue;
@@ -35,31 +84,71 @@ export function generateMarketTradeCandidates(
   const scenarios: TradeScenario[] = [];
   for (const typeId of [...byType.keys()].sort((a, b) => a - b)) {
     const orders = byType.get(typeId)!;
-    const sellOrders = orders.filter((order) => !order.is_buy_order);
-    const buyOrders = orders.filter((order) => order.is_buy_order);
-    if (sellOrders.length === 0 || buyOrders.length === 0) continue;
 
-    const bestSell = [...sellOrders].sort(
-      (a, b) => a.price - b.price || a.order_id - b.order_id,
-    )[0]!;
-    const bestBuy = [...buyOrders].sort(
-      (a, b) => b.price - a.price || a.order_id - b.order_id,
-    )[0]!;
+    if (strategy === "BUY_AND_RELIST") {
+      const acquisitionDepth = depthQuantity(orders, false, maxDepth);
+      const targetDepth = depthQuantity(orders, false, maxDepth + bufferLevels);
+      if (acquisitionDepth === null || targetDepth === null) continue;
+      if (targetDepth.limitPrice <= acquisitionDepth.limitPrice) continue;
 
-    if (bestBuy.price <= bestSell.price) continue;
+      const bestBuy = depthQuantity(orders, true, 1);
+      if (bestBuy !== null && bestBuy.first.price >= targetDepth.limitPrice) continue;
 
-    const quantity = Math.min(bestSell.volume_remain, bestBuy.volume_remain);
-    if (!Number.isInteger(quantity) || quantity <= 0) continue;
+      const quantity = Math.min(acquisitionDepth.quantity, quantityCap);
+      if (!Number.isSafeInteger(quantity) || quantity <= 0) continue;
+
+      const origin = {
+        region_id: market.region_id,
+        system_id: acquisitionDepth.first.system_id,
+        location_id: acquisitionDepth.first.location_id,
+      };
+
+      scenarios.push({
+        type_id: typeId,
+        requested_quantity: quantity,
+        acquisition: {
+          source: "MARKET",
+          market: {
+            execution_mode: "TAKER_AGAINST_SELL",
+            execution_location: origin,
+            quantity,
+            limit_price: acquisitionDepth.limitPrice,
+            order_range: policy.execution_order_range,
+          },
+        },
+        disposition: {
+          source: "MARKET",
+          market: {
+            execution_mode: "MAKER_SELL",
+            execution_location: origin,
+            quantity,
+            limit_price: targetDepth.limitPrice,
+            order_range: "station",
+          },
+        },
+        origin,
+        destination: origin,
+      });
+      continue;
+    }
+
+    const sell = depthQuantity(orders, false, maxDepth);
+    const buy = depthQuantity(orders, true, maxDepth);
+    if (sell === null || buy === null) continue;
+    if (buy.first.price <= sell.first.price) continue;
+
+    const quantity = Math.min(sell.quantity, buy.quantity, quantityCap);
+    if (!Number.isSafeInteger(quantity) || quantity <= 0) continue;
 
     const origin = {
       region_id: market.region_id,
-      system_id: bestSell.system_id,
-      location_id: bestSell.location_id,
+      system_id: sell.first.system_id,
+      location_id: sell.first.location_id,
     };
     const destination = {
       region_id: market.region_id,
-      system_id: bestBuy.system_id,
-      location_id: bestBuy.location_id,
+      system_id: buy.first.system_id,
+      location_id: buy.first.location_id,
     };
 
     scenarios.push({
@@ -71,7 +160,7 @@ export function generateMarketTradeCandidates(
           execution_mode: "TAKER_AGAINST_SELL",
           execution_location: origin,
           quantity,
-          limit_price: bestSell.price,
+          limit_price: sell.limitPrice,
           order_range: policy.execution_order_range,
         },
       },
@@ -81,7 +170,7 @@ export function generateMarketTradeCandidates(
           execution_mode: "TAKER_AGAINST_BUY",
           execution_location: destination,
           quantity,
-          limit_price: bestBuy.price,
+          limit_price: buy.limitPrice,
           order_range: policy.execution_order_range,
         },
       },

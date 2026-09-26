@@ -50,13 +50,13 @@ test("generates one deterministic market-to-market candidate per type with posit
   assert.equal(scenarios.length, 1);
   const scenario = scenarios[0]!;
   assert.equal(scenario.type_id, 34);
-  assert.equal(scenario.requested_quantity, 5);
+  assert.equal(scenario.requested_quantity, 55);
   assert.equal(scenario.acquisition.source, "MARKET");
   assert.equal(scenario.disposition.source, "MARKET");
   assert.ok(scenario.acquisition.market);
   assert.ok(scenario.disposition.market);
-  assert.equal(scenario.acquisition.market.limit_price, 100);
-  assert.equal(scenario.disposition.market.limit_price, 120);
+  assert.equal(scenario.acquisition.market.limit_price, 105);
+  assert.equal(scenario.disposition.market.limit_price, 115);
   assert.equal(scenario.origin.location_id, 60003760);
   assert.equal(scenario.destination.location_id, 60003760);
 });
@@ -92,4 +92,56 @@ test("non-public market provenance never becomes a candidate source", () => {
   ]);
   input.provenance.principal_scope = "CHARACTER";
   assert.equal(generateMarketTradeCandidates(input).length, 0);
+});
+
+
+test("depth-bounded candidate generation exposes multiple visible levels without combinatorial expansion", () => {
+  const scenarios = generateMarketTradeCandidates(
+    market([
+      order({ order_id: 10, price: 100, volume_remain: 3 }),
+      order({ order_id: 11, price: 101, volume_remain: 4 }),
+      order({ order_id: 12, price: 102, volume_remain: 100 }),
+      order({ order_id: 20, is_buy_order: true, price: 120, volume_remain: 2 }),
+      order({ order_id: 21, is_buy_order: true, price: 119, volume_remain: 3 }),
+      order({ order_id: 22, is_buy_order: true, price: 118, volume_remain: 100 }),
+    ]),
+    {
+      execution_order_range: "region",
+      max_depth_levels: 2,
+      max_candidate_quantity: null,
+    },
+  );
+
+  assert.equal(scenarios.length, 1);
+  assert.equal(scenarios[0]?.requested_quantity, 5);
+  assert.equal(scenarios[0]?.acquisition.market?.limit_price, 101);
+  assert.equal(scenarios[0]?.disposition.market.limit_price, 119);
+});
+
+
+test("BUY_AND_RELIST models buying visible sell liquidity then projecting a maker sell", () => {
+  const scenarios = generateMarketTradeCandidates(
+    market([
+      order({ order_id: 10, price: 100, volume_remain: 5 }),
+      order({ order_id: 11, price: 110, volume_remain: 5 }),
+      order({ order_id: 20, is_buy_order: true, price: 95, volume_remain: 100 }),
+    ]),
+    {
+      execution_order_range: "region",
+      max_depth_levels: 1,
+      maker_sell_buffer_levels: 1,
+      max_candidate_quantity: null,
+      strategy: "BUY_AND_RELIST",
+    },
+  );
+
+  assert.equal(scenarios.length, 1);
+  const scenario = scenarios[0]!;
+  assert.equal(scenario.requested_quantity, 5);
+  assert.equal(scenario.acquisition.market?.execution_mode, "TAKER_AGAINST_SELL");
+  assert.equal(scenario.acquisition.market?.limit_price, 100);
+  assert.equal(scenario.disposition.market.execution_mode, "MAKER_SELL");
+  assert.equal(scenario.disposition.market.limit_price, 110);
+  assert.equal(scenario.disposition.market.execution_location.location_id, 60003760);
+  assert.notEqual(scenario.disposition.market.limit_price, 95);
 });

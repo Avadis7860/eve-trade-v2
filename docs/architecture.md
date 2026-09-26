@@ -310,3 +310,46 @@ This is diagnostic state only; it is not itself an opportunity.
 The worker does not invent ownership from the observing character. Public market observations remain PUBLIC and carry their existing ESI provenance. Opportunity observations are created through the Phase 5 domain factory, which preserves the Phase 4 result, market snapshot references, order identifiers, observation scope, provenance and freshness state.
 
 Missing fee or capital configuration remains explicit through the existing Phase 4 analysis contract. The worker does not replace UNKNOWN/UNAVAILABLE inputs with zero values.
+
+
+## Phase 8.3 — Economic operations and market intelligence
+
+Phase 8.3 introduces a distinct economic lifecycle above the existing market simulation:
+
+```
+market intelligence
+      ↓
+trade scenario (simulation)
+      ↓
+economic operation
+      ↓
+position
+      ↓
+portfolio boundary
+```
+
+The existing Phase 4 TradeAnalysis engine remains the reusable deterministic market-book simulator. Phase 8.3 does not create a second order-book simulator. Its taker modes already traverse multiple visible depth levels; a projected `MAKER_SELL` is modeled separately from observed execution and never produces a fill evidence record by itself.
+
+Economic operations have an independent identity. An operation is not keyed by opportunity ID, order ID, order issuer, character or market snapshot. Append-only operation observations persist explicit lifecycle, quantities, result states, evidence, provenance and scope.
+
+The operation quantity equation is:
+
+```
+remaining = initial - acquired
+```
+
+and disposition cannot exceed the acquired remaining position. The lifecycle is driven by explicit operation quantities/evidence rather than order disappearance or market-score changes.
+
+Economic evaluation separates:
+- observed sub-result for explicitly documented disposed units;
+- observed current result for the operation as a whole;
+- projected current result for an explicit projection;
+- terminal result only after full observed disposition and complete economic inputs.
+
+No FIFO or hidden accounting ledger is introduced.
+
+Market intelligence reuses the existing complete canonical order book and persisted history. Depth, visible quantity coverage, trade-day coverage, historical price position, descriptive book anomalies and capital/time velocity are deterministic derivations with explicit status/provenance. Missing values remain UNKNOWN/PARTIAL/ERROR rather than zero. Historical range and anomaly outputs are descriptive evidence, not intent or trading guarantees.
+
+Prediction and scoring remain downstream analytical layers. Neither changes operation state nor manufactures execution evidence. The API exposes opportunities and economic operations through separate read-only contracts.
+
+See `docs/phase-08.3-economic-model.md` for the detailed contract and limitations.

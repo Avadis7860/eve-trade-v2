@@ -6,6 +6,7 @@ import type {
   MarketHistorySnapshot,
   OpportunityObservation,
   OpportunityPipelineRun,
+  EconomicOperation,
 } from "@eve-trade/contracts";
 import { runOpportunityPipeline } from "../src/opportunity-pipeline.js";
 
@@ -177,4 +178,47 @@ test("incomplete or non-comparable input is not promoted to an empty market resu
 
   assert.equal(run.status, "INPUT_UNAVAILABLE");
   assert.equal(target.observations.length, 0);
+});
+
+
+test("BUY_AND_RELIST pipeline persists a planned economic operation without fabricating acquisition evidence", async () => {
+  const marketState = market([
+    order({ order_id: 100, price: 100, volume_remain: 5 }),
+    order({ order_id: 101, price: 110, volume_remain: 5 }),
+    order({ order_id: 200, is_buy_order: true, price: 95, volume_remain: 10 }),
+  ]);
+  const target = sink();
+  const operations: EconomicOperation[] = [];
+
+  const run = await runOpportunityPipeline(
+    marketState,
+    snapshot(marketState),
+    target,
+    {
+      regionId: marketState.region_id,
+      observedAt: marketState.observed_at,
+      deployableCapital: 10_000,
+      salesTaxRate: 0,
+      brokerFeeRate: 0,
+      candidateStrategy: "BUY_AND_RELIST",
+    },
+    {
+      async save(operation: EconomicOperation) {
+        operations.push(operation);
+      },
+     },
+  );
+
+  assert.equal(run.status, "SUCCESS");
+  assert.equal(run.candidates_generated, 1);
+  assert.equal(target.observations.length, 1);
+  assert.equal(target.observations[0]?.phase4_result.status, "PROJECTED");
+  assert.equal(operations.length, 1);
+  assert.equal(operations[0]?.lifecycle_state, "ACQUISITION_PLANNED");
+  assert.equal(operations[0]?.acquired_quantity, 0);
+  assert.equal(operations[0]?.remaining_quantity, 0);
+  assert.equal(operations[0]?.scope.principal_scope, "PUBLIC");
+  assert.equal(operations[0]?.scope.character_id, null);
+  assert.equal(operations[0]?.provenance[0]?.principal_scope, "PUBLIC");
+  assert.deepEqual(operations[0]?.acquisition_evidence, []);
 });

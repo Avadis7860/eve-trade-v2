@@ -46,7 +46,12 @@ export interface ApiOpportunitySummary {
   trade_analysis_status: TradeAnalysisResult["status"];
   economic_result: Pick<
     TradeAnalysisResult["economic_result"],
-    "simulated_net_result" | "simulated_return" | "capital_required"
+    | "simulated_net_result"
+    | "simulated_return"
+    | "capital_required"
+    | "projected_net_result"
+    | "projected_return"
+    | "projected_disposition_proceeds"
   >;
   score: {
     availability: ScoringResult["availability"];
@@ -111,4 +116,57 @@ export interface ApiDetailResponse<T> {
 export interface ApiHealthResponse {
   contract_version: typeof API_CONTRACT_VERSION;
   status: "ok";
+}
+
+
+import type {
+  EconomicOperation,
+  EconomicOperationResult,
+  EconomicEvaluationState,
+  EconomicOperationLifecycleState,
+  EconomicOperationScope,
+  Position,
+} from "./economic-operation.js";
+
+export const API_ECONOMIC_OPERATION_CONTRACT_VERSION = "phase-08.3";
+
+export interface ApiEconomicOperationSummary {
+  contract_version: typeof API_ECONOMIC_OPERATION_CONTRACT_VERSION;
+  operation_id: string;
+  opportunity_id: string | null;
+  type_id: number;
+  initial_quantity: number;
+  acquired_quantity: number;
+  unacquired_quantity: number;
+  disposed_quantity: number;
+  remaining_quantity: number;
+  lifecycle_state: EconomicOperationLifecycleState;
+  evaluation_state: EconomicEvaluationState;
+  acquisition_mode: EconomicOperation["acquisition_mode"];
+  disposition_mode: EconomicOperation["disposition_mode"];
+  result: EconomicOperationResult;
+  position: Position | null;
+  scope: EconomicOperationScope;
+  provenance: EconomicOperation["provenance"];
+  observed_at: string;
+}
+
+export interface ApiEconomicOperationDetail extends ApiEconomicOperationSummary {
+  operation: EconomicOperation;
+  history: EconomicOperation[];
+}
+
+export interface ApiEconomicOperationListResponse {
+  contract_version: typeof API_ECONOMIC_OPERATION_CONTRACT_VERSION;
+  data: {
+    items: ApiEconomicOperationSummary[];
+    total: number;
+    offset: number;
+    limit: number;
+  };
+}
+
+export interface ApiEconomicOperationDetailResponse {
+  contract_version: typeof API_ECONOMIC_OPERATION_CONTRACT_VERSION;
+  data: ApiEconomicOperationDetail;
 }

@@ -5,6 +5,7 @@ import {
   EsiPlayerClient,
 } from "@eve-trade/esi";
 import {
+  EconomicOperationRepository,
   MarketHistoryRepository,
   MarketObservationRepository,
   OpportunityTrackingRepository,
@@ -66,6 +67,7 @@ try {
     const repository = new MarketObservationRepository(pool);
     const historyRepository = new MarketHistoryRepository(pool);
     const trackingRepository = new OpportunityTrackingRepository(pool);
+    const economicOperationRepository = new EconomicOperationRepository(pool);
     const client = new EsiMarketClient(esiOptions);
     const state = await ingestMarketRegion(client, repository, { regionId });
     const history = await rebuildMarketHistory(repository, historyRepository);
@@ -80,7 +82,10 @@ try {
         observedAt: state.observed_at,
         deployableCapital: optionalNonNegativeEnv("DEPLOYABLE_CAPITAL"),
         salesTaxRate: optionalNonNegativeEnv("SALES_TAX_RATE"),
+        brokerFeeRate: optionalNonNegativeEnv("BROKER_FEE_RATE"),
+        candidateStrategy: "BUY_AND_RELIST",
       },
+      economicOperationRepository,
     );
     console.log(JSON.stringify({
       collection_id: state.collection_id,

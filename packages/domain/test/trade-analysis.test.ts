@@ -956,3 +956,122 @@ test("escrow remains separate when its value is unavailable", async () => {
   assert.equal(result.capital_context.committed_escrow, null);
   assert.equal(result.capital_context.deployable_capital, 1_000_000);
 });
+
+
+test("maker sell is a projection with no disposition fill evidence", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request({
+    scenario: {
+      ...request().scenario,
+      destination: location,
+      disposition: {
+        source: "MARKET",
+        market: {
+          execution_mode: "MAKER_SELL",
+          execution_location: location,
+          quantity: 5,
+          limit_price: 110,
+          order_range: "station",
+        },
+      },
+    },
+    disposition_market: snapshot([
+      baseOrder({ order_id: 200, price: 110, volume_remain: 20 }),
+      baseOrder({
+        order_id: 201,
+        is_buy_order: true,
+        price: 95,
+        volume_remain: 20,
+      }),
+    ]),
+    fee_context: {
+      broker_fee_rate: 0.01,
+      sales_tax_rate: 0.01,
+      source: "EXPLICIT",
+    },
+    logistics_context: {
+      status: "COMPLETE",
+      cost: 0,
+      jump_count: 0,
+      travel_time_seconds: 0,
+      provenance: null,
+    },
+    constraints: {
+      max_quantity: null,
+      max_capital: null,
+      min_quantity: null,
+      execution_modes: ["TAKER_AGAINST_SELL", "MAKER_SELL"],
+    },
+  });
+
+  const result = analyzeTradeRequest(input);
+  assert.equal(result.status, "PROJECTED");
+  assert.equal(result.acquisition_leg.filled_quantity, 5);
+  assert.equal(result.disposition_leg.execution_mode, "MAKER_SELL");
+  assert.equal(result.disposition_leg.filled_quantity, 0);
+  assert.deepEqual(result.disposition_leg.simulated_fills, []);
+  assert.equal(result.market_evidence.disposition_order_ids.length, 0);
+  assert.equal(result.economic_result.simulated_net_result, null);
+  assert.equal(result.economic_result.projected_disposition_proceeds, 550);
+  assert.equal(result.economic_result.projected_fees_total, 11);
+  assert.equal(result.economic_result.projected_net_result, 39);
+  assert.equal(result.economic_result.projected_return, 0.078);
+  assert.equal(result.market_intelligence?.acquisition?.status, "COMPLETE");
+  assert.equal(result.market_intelligence?.disposition?.status, "COMPLETE");
+});
+
+
+test("maker sell crossing the visible best buy is rejected as an invalid scenario", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request({
+    scenario: {
+      ...request().scenario,
+      destination: location,
+      disposition: {
+        source: "MARKET",
+        market: {
+          execution_mode: "MAKER_SELL",
+          execution_location: location,
+          quantity: 5,
+          limit_price: 95,
+          order_range: "station",
+        },
+      },
+    },
+    disposition_market: snapshot([
+      baseOrder({ order_id: 200, price: 110, volume_remain: 20 }),
+      baseOrder({ order_id: 201, is_buy_order: true, price: 100, volume_remain: 20 }),
+    ]),
+    fee_context: {
+      broker_fee_rate: 0,
+      sales_tax_rate: 0,
+      source: "EXPLICIT",
+    },
+    logistics_context: {
+      status: "COMPLETE",
+      cost: 0,
+      jump_count: 0,
+      travel_time_seconds: 0,
+      provenance: null,
+    },
+    constraints: {
+      max_quantity: null,
+      max_capital: null,
+      min_quantity: null,
+      execution_modes: ["TAKER_AGAINST_SELL", "MAKER_SELL"],
+    },
+  });
+
+  const result = analyzeTradeRequest(input);
+  assert.equal(result.status, "NOT_EXECUTABLE");
+  assert.equal(
+    result.status_reasons.some(
+      (item) =>
+        item.code === "SCENARIO_INVALID" &&
+        item.message.includes("visible best buy"),
+    ),
+    true,
+  );
+  assert.equal(result.disposition_leg.filled_quantity, 0);
+  assert.deepEqual(result.disposition_leg.simulated_fills, []);
+});

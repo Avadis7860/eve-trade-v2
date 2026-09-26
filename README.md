@@ -19,13 +19,19 @@ canonical market & player state
    ↓
 historical market intelligence
    ↓
-trade analysis
+market intelligence
+   ↓
+trade analysis / scenarios
    ↓
 opportunity tracking
    ↓
+economic operations
+   ↓
+positions / portfolio boundary
+   ↓
 prediction
    ↓
-future scoring / advice
+scoring / advice
 ```
 
 The core design principle is that the system must preserve the difference between **what was observed**, **what was derived**, and **what remains unknown**.
@@ -52,9 +58,19 @@ The project does not place, modify or cancel EVE orders.
 
 ### Opportunity tracking
 
-Detected opportunities can be persisted as time-bound observations with their market evidence and analytical context.
+Detected opportunities are persisted as time-bound observations with their market evidence and analytical context.
 
 Opportunity identity remains separate from individual market orders and from the character that observed the opportunity. Later outcome evidence is kept separate from the original simulation.
+
+## Economic operations
+
+EconomicOperation is a distinct lifecycle model above simulation and below portfolio state. It tracks acquired, disposed and remaining quantity, explicit execution evidence, projected maker dispositions and separate current/terminal results.
+
+A positive sub-result never closes an incomplete operation. Order IDs remain evidence identifiers, not operation identities. Projected disposition is never presented as a filled order.
+
+## Market intelligence
+
+The market layer already persists order-book depth and historical observations. Phase 08.3 adds deterministic coverage metrics, descriptive historical range context and explicit book-change anomalies without treating liquidity as guaranteed future supply or anomalies as actor intent.
 
 ### Prediction
 
