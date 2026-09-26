@@ -73,6 +73,7 @@ function result(
       status: dispositionFilled === 10 ? "EXECUTABLE" : "PARTIAL",
       reasons: [],
     },
+    projected_disposition: null,
     capital_context: {
       wallet_cash: 5000,
       committed_escrow: 0,

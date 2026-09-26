@@ -96,6 +96,7 @@ function analysis(
       status: "EXECUTABLE",
       reasons: [],
     },
+    projected_disposition: null,
     capital_context: {
       wallet_cash: 10000,
       committed_escrow: 0,

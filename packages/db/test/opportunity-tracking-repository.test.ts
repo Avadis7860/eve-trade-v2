@@ -72,6 +72,7 @@ const analysis: TradeAnalysisResult = {
     status: "EXECUTABLE",
     reasons: [],
   },
+  projected_disposition: null,
   capital_context: { wallet_cash: null, committed_escrow: 0, inventory: null, deployable_capital: 1000, source: "EXPLICIT_DEPLOYABLE" },
   fee_context: { broker_fee_rate: null, sales_tax_rate: 0.05, source: "EXPLICIT" },
   market_evidence: {

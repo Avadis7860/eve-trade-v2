@@ -86,6 +86,7 @@ function analysis(
       status: status === "NOT_EXECUTABLE" ? "NOT_EXECUTABLE" : filled === 10 ? "EXECUTABLE" : "PARTIAL",
       reasons: [],
     },
+    projected_disposition: null,
     capital_context: {
       wallet_cash: 100000,
       committed_escrow: 0,

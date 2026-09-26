@@ -8,7 +8,7 @@ import type {
   MarketHistorySnapshot,
   TradeAnalysisRequest,
 } from "@eve-trade/contracts";
-import { fingerprintTradeScenario, parseMarketOrderRange, simulateTakerAgainstBuy, simulateTakerAgainstSell } from "../src/trade-analysis.js";
+import { fingerprintTradeScenario, parseMarketOrderRange, projectMakerSell, simulateTakerAgainstBuy, simulateTakerAgainstSell } from "../src/trade-analysis.js";
 
 const baseOrder = (overrides: Partial<EsiMarketOrder> = {}): EsiMarketOrder => ({
   duration: 90,
@@ -955,4 +955,84 @@ test("escrow remains separate when its value is unavailable", async () => {
   assert.equal(result.capital_context.wallet_cash, 1_000_000);
   assert.equal(result.capital_context.committed_escrow, null);
   assert.equal(result.capital_context.deployable_capital, 1_000_000);
+});
+
+
+test("maker sell projection uses visible sell reference without creating a fill", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.scenario.disposition.market.execution_mode = "MAKER_SELL";
+  input.scenario.disposition.market.limit_price = 120;
+  input.scenario.disposition.market.order_range = "station";
+  input.constraints.execution_modes = ["TAKER_AGAINST_SELL", "MAKER_SELL"];
+  input.fee_context = {
+    broker_fee_rate: null,
+    sales_tax_rate: null,
+    source: "UNKNOWN",
+  };
+  input.disposition_market = snapshot([
+    baseOrder({ order_id: 20, price: 120, volume_remain: 20 }),
+  ]);
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "PROJECTED");
+  assert.equal(result.acquisition_leg.status, "EXECUTABLE");
+  assert.equal(result.acquisition_leg.filled_quantity, 5);
+  assert.equal(result.disposition_leg.execution_mode, "MAKER_SELL");
+  assert.equal(result.disposition_leg.status, "PROJECTED");
+  assert.equal(result.disposition_leg.filled_quantity, 0);
+  assert.equal(result.disposition_leg.remaining_quantity, 5);
+  assert.deepEqual(result.disposition_leg.simulated_fills, []);
+  assert.deepEqual(result.market_evidence.disposition_order_ids, []);
+
+  assert.equal(result.projected_disposition?.status, "PROJECTED");
+  assert.equal(result.projected_disposition?.reference_snapshot_id, "snapshot-1");
+  assert.deepEqual(result.projected_disposition?.reference_order_ids, [20]);
+  assert.equal(result.projected_disposition?.target_price, 120);
+  assert.equal(result.status_reasons.some((item) => item.code === "FEE_RATE_UNKNOWN"), false);
+});
+
+test("maker sell projection is unavailable when the target is not a visible sell level", () => {
+  const result = projectMakerSell({
+    snapshot: snapshot([
+      baseOrder({ order_id: 21, price: 110, volume_remain: 20 }),
+      baseOrder({ order_id: 22, is_buy_order: true, price: 120, volume_remain: 20 }),
+    ]),
+    type_id: 34,
+    execution_location: location,
+    quantity: 5,
+    limit_price: 120,
+  });
+
+  assert.equal(result.status, "DATA_UNAVAILABLE");
+  assert.deepEqual(result.reference_order_ids, []);
+  assert.equal(result.reasons[0]?.code, "PROJECTED_REFERENCE_UNAVAILABLE");
+});
+
+test("partial acquisition remains partial even when a maker disposition is projectable", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request();
+  input.scenario.disposition.market.execution_mode = "MAKER_SELL";
+  input.scenario.disposition.market.limit_price = 120;
+  input.constraints.execution_modes = ["TAKER_AGAINST_SELL", "MAKER_SELL"];
+  input.acquisition_market = snapshot([
+    baseOrder({ order_id: 30, price: 100, volume_remain: 2 }),
+    baseOrder({ order_id: 31, price: 100, volume_remain: 2 }),
+  ]);
+  input.disposition_market = snapshot([
+    baseOrder({ order_id: 32, price: 120, volume_remain: 20 }),
+  ]);
+  input.fee_context = {
+    broker_fee_rate: null,
+    sales_tax_rate: null,
+    source: "UNKNOWN",
+  };
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "PARTIAL");
+  assert.equal(result.acquisition_leg.filled_quantity, 4);
+  assert.equal(result.disposition_leg.status, "PROJECTED");
+  assert.deepEqual(result.disposition_leg.simulated_fills, []);
 });

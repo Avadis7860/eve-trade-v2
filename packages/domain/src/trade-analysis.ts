@@ -16,6 +16,7 @@ import type {
   TradeScenario,
   LogisticsContext,
   PlayerAnalysisContext,
+  ProjectedDisposition,
 } from "@eve-trade/contracts";
 import { TRADE_ANALYSIS_CONTRACT_VERSION } from "@eve-trade/contracts";
 
@@ -1115,6 +1116,104 @@ function dedupeReasons(reasons: TradeAnalysisReason[]): TradeAnalysisReason[] {
   });
 }
 
+export interface MakerSellProjectionInput {
+  snapshot: MarketAnalysisSnapshot;
+  type_id: number;
+  execution_location: MarketLocation;
+  quantity: number;
+  limit_price: number;
+}
+
+export function projectMakerSell(
+  input: MakerSellProjectionInput,
+): ProjectedDisposition {
+  const reasons: TradeAnalysisReason[] = [];
+
+  if (invalidQuantity(input.quantity)) {
+    reasons.push(
+      reason("QUANTITY_INVALID", "quantity must be a positive integer", true),
+    );
+  }
+  if (invalidPrice(input.limit_price)) {
+    reasons.push(
+      reason("PRICE_INVALID", "limit price must be a finite positive number", true),
+    );
+  }
+  if (!snapshotUsable(input.snapshot)) {
+    reasons.push(
+      reason(
+        input.snapshot.snapshot.status === "ERROR" || input.snapshot.market.status !== "COMPLETE"
+          ? "MARKET_UNAVAILABLE"
+          : "MARKET_NOT_COMPARABLE",
+        "market snapshot is not a complete comparable canonical state",
+        true,
+      ),
+    );
+  }
+  if (input.snapshot.market.provenance.principal_scope !== "PUBLIC") {
+    reasons.push(
+      reason(
+        "MARKET_SCOPE_INVALID",
+        "market reference for a projected maker sell must remain PUBLIC-scope evidence",
+        true,
+      ),
+    );
+  }
+  if (input.snapshot.market.region_id !== input.execution_location.region_id) {
+    reasons.push(
+      reason(
+        "MARKET_NOT_COMPARABLE",
+        "market region does not match the projected disposition location",
+        true,
+      ),
+    );
+  }
+
+  if (reasons.length > 0) {
+    return {
+      execution_mode: "MAKER_SELL",
+      requested_quantity: Math.max(0, input.quantity),
+      target_price: input.limit_price,
+      reference_snapshot_id: input.snapshot.snapshot.snapshot_id,
+      reference_order_ids: [],
+      status: "DATA_UNAVAILABLE",
+      reasons,
+    };
+  }
+
+  const referenceOrderIds = input.snapshot.market.orders
+    .filter(
+      (order) =>
+        !order.is_buy_order &&
+        order.type_id === input.type_id &&
+        order.location_id === input.execution_location.location_id &&
+        order.volume_remain > 0 &&
+        order.price === input.limit_price,
+    )
+    .map((order) => order.order_id)
+    .sort((a, b) => a - b);
+
+  if (referenceOrderIds.length === 0) {
+    reasons.push(
+      reason(
+        "PROJECTED_REFERENCE_UNAVAILABLE",
+        "projected maker-sell price is not anchored to a visible sell level in the supplied snapshot",
+        true,
+      ),
+    );
+  }
+
+  return {
+    execution_mode: "MAKER_SELL",
+    requested_quantity: input.quantity,
+    target_price: input.limit_price,
+    reference_snapshot_id: input.snapshot.snapshot.snapshot_id,
+    reference_order_ids: referenceOrderIds,
+    status: referenceOrderIds.length > 0 ? "PROJECTED" : "DATA_UNAVAILABLE",
+    reasons,
+  };
+}
+
 function statusFor(
   reasons: TradeAnalysisReason[],
   acquisition: TakerSimulationResult | TradeLegResult,
@@ -1133,6 +1232,7 @@ function statusFor(
         "INVENTORY_UNAVAILABLE",
         "CAPITAL_UNAVAILABLE",
         "FRESHNESS_METADATA_MISSING",
+        "PROJECTED_REFERENCE_UNAVAILABLE",
       ].includes(item.code),
     )
   ) {
@@ -1161,6 +1261,13 @@ function statusFor(
       return "PARTIAL";
     }
     return "NOT_EXECUTABLE";
+  }
+
+  if (
+    acquisition.status === "EXECUTABLE" &&
+    disposition.status === "PROJECTED"
+  ) {
+    return "PROJECTED";
   }
 
   if (!economicComplete) return "PARTIAL";
@@ -1298,7 +1405,9 @@ export function analyzeTradeRequest(
   validationReasons.push(
     ...validateMarketLeg(
       scenario.disposition.market,
-      "TAKER_AGAINST_BUY",
+      scenario.disposition.market.execution_mode === "MAKER_SELL"
+        ? "MAKER_SELL"
+        : "TAKER_AGAINST_BUY",
       scenario.destination,
       scenario.requested_quantity,
       request.constraints.execution_modes,
@@ -1314,9 +1423,12 @@ export function analyzeTradeRequest(
     validationReasons.push(...inventoryCheck.reasons);
   }
 
-  if (request.fee_context.sales_tax_rate === null ||
+  if (
+    scenario.disposition.market.execution_mode === "TAKER_AGAINST_BUY" &&
+    (request.fee_context.sales_tax_rate === null ||
       !Number.isFinite(request.fee_context.sales_tax_rate) ||
-      request.fee_context.sales_tax_rate < 0) {
+      request.fee_context.sales_tax_rate < 0)
+  ) {
     validationReasons.push(
       reason(
         "FEE_RATE_UNKNOWN",
@@ -1411,6 +1523,7 @@ export function analyzeTradeRequest(
   let acquisitionLeg: TradeLegResult;
   let acquisitionSettlement: number | null = null;
   let dispositionLeg: TradeLegResult;
+  let projectedDisposition: ProjectedDisposition | null = null;
   let dispositionSettlement: number | null = null;
 
   if (
@@ -1501,12 +1614,30 @@ export function analyzeTradeRequest(
     )
   ) {
     dispositionLeg = fallbackLeg(
-      "TAKER_AGAINST_BUY",
+      scenario.disposition.market.execution_mode,
       scenario.requested_quantity,
       validationReasons.filter((item) =>
         ["SCENARIO_INVALID", "MARKET_UNAVAILABLE", "MARKET_NOT_COMPARABLE", "MARKET_SCOPE_INVALID", "QUANTITY_INVALID", "PRICE_INVALID"].includes(item.code),
       ),
     );
+  } else if (scenario.disposition.market.execution_mode === "MAKER_SELL") {
+    const projection = projectMakerSell({
+      snapshot: request.disposition_market,
+      type_id: scenario.type_id,
+      execution_location: scenario.destination,
+      quantity: scenario.requested_quantity,
+      limit_price: scenario.disposition.market.limit_price,
+    });
+    dispositionLeg = {
+      execution_mode: "MAKER_SELL",
+      requested_quantity: projection.requested_quantity,
+      filled_quantity: 0,
+      remaining_quantity: projection.requested_quantity,
+      simulated_fills: [],
+      status: projection.status,
+      reasons: projection.reasons,
+    };
+    projectedDisposition = projection;
   } else {
     const result = simulateTakerAgainstBuy({
       snapshot: request.disposition_market,
@@ -1679,6 +1810,7 @@ export function analyzeTradeRequest(
     acquisition_leg: acquisitionLeg,
     logistics_leg: request.logistics_context,
     disposition_leg: dispositionLeg,
+    projected_disposition: projectedDisposition,
     capital_context:
       capital.context ?? fallbackCapital,
     fee_context: request.fee_context,

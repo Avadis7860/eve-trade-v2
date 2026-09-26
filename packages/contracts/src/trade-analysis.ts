@@ -21,7 +21,8 @@ export type TradeAnalysisStatus =
   | "NOT_EXECUTABLE"
   | "STALE"
   | "PARTIAL"
-  | "DATA_UNAVAILABLE";
+  | "DATA_UNAVAILABLE"
+  | "PROJECTED";
 
 export type TradeAnalysisReasonCode =
   | "MARKET_UNAVAILABLE"
@@ -46,7 +47,8 @@ export type TradeAnalysisReasonCode =
   | "FRESHNESS_EXCEEDED"
   | "FRESHNESS_METADATA_MISSING"
   | "FUTURE_DATA"
-  | "ECONOMIC_RESULT_UNAVAILABLE";
+  | "ECONOMIC_RESULT_UNAVAILABLE"
+  | "PROJECTED_REFERENCE_UNAVAILABLE";
 
 export interface TradeAnalysisReason {
   code: TradeAnalysisReasonCode;
@@ -184,6 +186,16 @@ export interface TradeLegResult {
   reasons: TradeAnalysisReason[];
 }
 
+export interface ProjectedDisposition {
+  execution_mode: "MAKER_SELL";
+  requested_quantity: number;
+  target_price: number;
+  reference_snapshot_id: string;
+  reference_order_ids: number[];
+  status: "PROJECTED" | "DATA_UNAVAILABLE";
+  reasons: TradeAnalysisReason[];
+}
+
 export interface MarketEvidence {
   acquisition_snapshot_id: string | null;
   disposition_snapshot_id: string | null;
@@ -220,6 +232,7 @@ export interface TradeAnalysisResult {
   acquisition_leg: TradeLegResult;
   logistics_leg: LogisticsContext;
   disposition_leg: TradeLegResult;
+  projected_disposition: ProjectedDisposition | null;
   capital_context: CapitalContext;
   fee_context: FeeContext;
   market_evidence: MarketEvidence;
