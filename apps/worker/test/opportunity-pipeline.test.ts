@@ -91,6 +91,7 @@ test("one complete cycle creates, analyses and persists a real candidate", async
       observedAt: marketState.observed_at,
       deployableCapital: 10_000,
       salesTaxRate: 0,
+      candidateStrategy: "MARKET_TO_MARKET",
     },
   );
 
