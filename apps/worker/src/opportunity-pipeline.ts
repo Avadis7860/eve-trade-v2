@@ -144,13 +144,18 @@ function createPlannedOperation(
       : []),
   ];
 
+  const dispositionMode = scenario.disposition.market.execution_mode;
+  if (dispositionMode !== "MAKER_SELL" && dispositionMode !== "TAKER_AGAINST_BUY") {
+    throw new Error("projected economic operation requires a supported disposition mode");
+  }
+
   const operation = createEconomicOperation({
     operation_id: economicOperationId(opportunityId),
     opportunity_id: opportunityId,
     type_id: scenario.type_id,
     initial_quantity: scenario.requested_quantity,
     acquisition_mode: "TAKER_AGAINST_SELL",
-    disposition_mode: scenario.disposition.market.execution_mode,
+    disposition_mode: dispositionMode,
     scope: {
       principal_scope: "PUBLIC",
       principal_id: null,
