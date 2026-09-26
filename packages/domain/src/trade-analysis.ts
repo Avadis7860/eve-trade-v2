@@ -255,6 +255,11 @@ function finalize(
   for (const order of candidates) {
     if (remaining <= 0) break;
 
+    // ESI exposes min_volume as the minimum quantity an order can fill.
+    if (!Number.isSafeInteger(order.min_volume) || order.min_volume <= 0) {
+      continue;
+    }
+
     const availableByCapital =
       input.max_settlement_value === undefined
         ? Number.MAX_SAFE_INTEGER
@@ -273,7 +278,7 @@ function finalize(
       order.volume_remain,
       availableByCapital,
     );
-    if (quantity <= 0) continue;
+    if (quantity < order.min_volume) continue;
 
     fills.push({
       snapshot_id: input.snapshot.snapshot.snapshot_id,
