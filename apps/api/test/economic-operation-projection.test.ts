@@ -28,6 +28,8 @@ test("API projection preserves operation lifecycle, quantities, result and posit
   assert.equal(summary.operation_id, "operation-api-1");
   assert.equal(summary.remaining_quantity, 0);
   assert.equal(summary.lifecycle_state, "DETECTED");
+  assert.equal(summary.state_at, "2026-09-26T04:00:00.000Z");
+  assert.equal(summary.state_kind, "PLANNED");
   assert.equal(summary.disposition_mode, "MAKER_SELL");
   assert.equal(summary.position, null);
 
