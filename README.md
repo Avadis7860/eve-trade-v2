@@ -66,7 +66,7 @@ Opportunity identity remains separate from individual market orders and from the
 
 EconomicOperation is a distinct lifecycle model above simulation and below portfolio state. It tracks acquired, disposed and remaining quantity, explicit execution evidence, projected maker dispositions and separate current/terminal results.
 
-A positive sub-result never closes an incomplete operation. Order IDs remain evidence identifiers, not operation identities. Projected disposition is never presented as a filled order.
+A positive sub-result never closes an incomplete operation. Order IDs remain evidence identifiers, not operation identities. Projected disposition is never presented as a filled order. Planned PUBLIC operations remain PUBLIC until explicit owner-scoped evidence establishes otherwise; an observing character is not inferred to be the owner. Operation API state uses state_at + state_kind rather than labeling projected state as observed_at.
 
 ## Market intelligence
 
