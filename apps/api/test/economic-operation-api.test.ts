@@ -86,6 +86,8 @@ test("operation API preserves scope isolation", async () => {
     const detailPayload = await detailResponse.json();
     assert.equal(detailResponse.status, 200);
     assert.equal(detailPayload.data.operation_id, "op-public");
+    assert.equal(detailPayload.data.state_kind, "PLANNED");
+    assert.equal(detailPayload.data.state_at, "2026-09-26T04:00:00.000Z");
     assert.equal(detailPayload.data.history.length, 1);
   } finally {
     await new Promise<void>((resolve) => server.close(() => resolve()));
