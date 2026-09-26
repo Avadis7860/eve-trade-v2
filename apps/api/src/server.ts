@@ -368,6 +368,9 @@ export function createApiHandler({
                   candidates_generated: pipelineRun.candidates_generated,
                   analyses_produced: pipelineRun.analyses_produced,
                   observations_persisted: pipelineRun.observations_persisted,
+                  economic_operations_created: pipelineRun.economic_operations_created ?? 0,
+                  economic_operation_observations_persisted:
+                    pipelineRun.economic_operation_observations_persisted ?? 0,
                   error: pipelineRun.error,
                 }
               : null,
