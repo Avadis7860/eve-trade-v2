@@ -180,6 +180,11 @@ function renderOperationCard(item) {
       `Disposition: ${item.disposition_mode.replaceAll("_", " ")}`,
       "muted",
     ),
+    node(
+      "p",
+      `State: ${item.state_kind} · ${new Date(item.state_at).toLocaleString()}`,
+      "muted",
+    ),
   );
 
   const open = () => void loadOperationDetail(item.operation_id);
@@ -255,6 +260,7 @@ async function loadOperationDetail(operationId) {
         `Acquired: ${formatNumber(item.acquired_quantity)} · Unacquired: ${formatNumber(item.unacquired_quantity)} · Disposed: ${formatNumber(item.disposed_quantity)} · Remaining: ${formatNumber(item.remaining_quantity)}`,
       ),
       node("p", `Evaluation: ${item.evaluation_state.replaceAll("_", " ")}`),
+      node("p", `State: ${item.state_kind} · ${new Date(item.state_at).toLocaleString()}`),
       node("p", `Observed current result: ${formatResult(item.result.observed_current_result)}`),
       node("p", `Projected current result: ${formatResult(item.result.projected_current_result)}`),
       node("p", `Terminal result: ${formatResult(item.result.terminal_result)}`),
