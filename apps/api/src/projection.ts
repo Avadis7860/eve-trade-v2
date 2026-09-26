@@ -122,7 +122,8 @@ export function projectEconomicOperation(
     position: operation.position,
     scope: operation.scope,
     provenance: [...operation.provenance],
-    observed_at: operation.updated_at,
+    state_at: operation.updated_at,
+    state_kind: operation.state_kind,
   };
 }
 
