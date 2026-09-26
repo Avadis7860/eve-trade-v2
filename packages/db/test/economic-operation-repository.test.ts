@@ -114,6 +114,20 @@ test("persists economic operation snapshots idempotently and preserves history",
     await repository.save(operation, "operation-observation-1");
     await repository.save(operation, "operation-observation-1");
 
+    await assert.rejects(
+      repository.save(
+        {
+          ...operation,
+          result: {
+            ...operation.result,
+            observed_current_result: -499,
+          },
+        },
+        "operation-observation-1",
+      ),
+      /economic operation observation conflict/i,
+    );
+
     const updatedObservation = {
       ...operation,
       updated_at: "2026-09-26T04:20:00Z",
