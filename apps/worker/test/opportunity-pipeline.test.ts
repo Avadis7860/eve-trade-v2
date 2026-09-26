@@ -223,3 +223,116 @@ test("BUY_AND_RELIST pipeline persists a planned economic operation without fabr
   assert.equal(operations[0]?.provenance[0]?.principal_scope, "PUBLIC");
   assert.deepEqual(operations[0]?.acquisition_evidence, []);
 });
+
+
+test("pipeline can persist explicitly resolved acquisition and disposition evidence", async () => {
+  const marketState = market([
+    order({ order_id: 100, price: 100, volume_remain: 5 }),
+    order({ order_id: 101, price: 110, volume_remain: 5 }),
+    order({ order_id: 200, is_buy_order: true, price: 95, volume_remain: 10 }),
+  ]);
+  const target = sink();
+  const operations: EconomicOperation[] = [];
+
+  const run = await runOpportunityPipeline(
+    marketState,
+    snapshot(marketState),
+    target,
+    {
+      regionId: marketState.region_id,
+      observedAt: marketState.observed_at,
+      deployableCapital: 10_000,
+      salesTaxRate: 0,
+      brokerFeeRate: 0,
+      candidateStrategy: "BUY_AND_RELIST",
+      evidenceResolver: {
+        async resolve() {
+          return {
+            acquisition: {
+              record_id: "acq-1",
+              observed_at: "2026-09-25T22:01:00.000Z",
+              quantity: 5,
+              cost: 500,
+              evidence: [{
+                evidence_id: "tx-buy-1",
+                kind: "TRANSACTION",
+                observed_at: "2026-09-25T22:01:00.000Z",
+                quantity: 5,
+                unit_price: 100,
+                value: 500,
+                order_id: null,
+                transaction_id: 7001,
+                issuer: null,
+                provenance: {
+                  source_kind: "ESI",
+                  source_id: "character:42",
+                  endpoint: "/characters/42/wallet/transactions/",
+                  principal_scope: "CHARACTER",
+                  principal_id: 42,
+                },
+              }],
+              provenance: [{
+                source_kind: "ESI",
+                source_id: "character:42",
+                endpoint: "/characters/42/wallet/transactions/",
+                principal_scope: "CHARACTER",
+                principal_id: 42,
+              }],
+            },
+            disposition: {
+              record_id: "disp-1",
+              observed_at: "2026-09-25T22:02:00.000Z",
+              quantity: 5,
+              proceeds: 600,
+              disposed_cost_basis: 500,
+              fees: 0,
+              logistics: 0,
+              evidence: [{
+                evidence_id: "tx-sell-1",
+                kind: "TRANSACTION",
+                observed_at: "2026-09-25T22:02:00.000Z",
+                quantity: 5,
+                unit_price: 120,
+                value: 600,
+                order_id: null,
+                transaction_id: 7002,
+                issuer: null,
+                provenance: {
+                  source_kind: "ESI",
+                  source_id: "character:42",
+                  endpoint: "/characters/42/wallet/transactions/",
+                  principal_scope: "CHARACTER",
+                  principal_id: 42,
+                },
+              }],
+              provenance: [{
+                source_kind: "ESI",
+                source_id: "character:42",
+                endpoint: "/characters/42/wallet/transactions/",
+                principal_scope: "CHARACTER",
+                principal_id: 42,
+              }],
+            },
+          };
+        },
+      },
+    },
+    {
+      async save(operation: EconomicOperation) {
+        operations.push(operation);
+      },
+    },
+  );
+
+  assert.equal(run.status, "SUCCESS");
+  assert.equal(run.economic_operations_created, 1);
+  assert.equal(run.economic_operation_observations_persisted, 3);
+  assert.equal(operations.length, 3);
+  assert.equal(operations[0]?.lifecycle_state, "ACQUISITION_PLANNED");
+  assert.equal(operations[1]?.lifecycle_state, "OPEN");
+  assert.equal(operations[2]?.lifecycle_state, "COMPLETED");
+  assert.equal(operations[2]?.remaining_quantity, 0);
+  assert.equal(operations[2]?.result.terminal_result, 100);
+  assert.equal(operations[2]?.state_kind, "OBSERVED");
+});
+
