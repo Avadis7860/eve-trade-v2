@@ -202,7 +202,6 @@ test("BUY_AND_RELIST pipeline persists a planned economic operation without fabr
       deployableCapital: 10_000,
       salesTaxRate: 0,
       brokerFeeRate: 0,
-      candidateStrategy: "BUY_AND_RELIST",
     },
     {
       async save(operation: EconomicOperation) {
