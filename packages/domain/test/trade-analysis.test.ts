@@ -390,7 +390,7 @@ function request(overrides: Partial<TradeAnalysisRequest> = {}): TradeAnalysisRe
       max_quantity: null,
       max_capital: null,
       min_quantity: null,
-      execution_modes: ["TAKER_AGAINST_SELL", "TAKER_AGAINST_BUY"],
+      execution_modes: ["TAKER_AGAINST_SELL", "TAKER_AGAINST_BUY", "MAKER_SELL"],
     },
     ...overrides,
   };
