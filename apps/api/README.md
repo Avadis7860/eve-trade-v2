@@ -30,7 +30,8 @@ The API starts without ESI_ACCESS_TOKEN, PLAYER_CHARACTER_ID, or any other EVE c
 
 ## Read contract
 
-Opportunity contract version: `phase-08.1`\nEconomic operation contract version: `phase-08.3`
+Opportunity contract version: `phase-08.1`
+Economic operation contract version: `phase-08.3`
 
 Public routes:
 
