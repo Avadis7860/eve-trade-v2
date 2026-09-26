@@ -75,12 +75,12 @@ export class OpportunityTrackingRepository {
   async savePipelineRun(run: OpportunityPipelineRun): Promise<void> {
     await this.pool.query(
       "INSERT INTO opportunity_pipeline_runs " +
-      "(run_id,region_id,market_collection_id,observed_at,completed_at,status,candidates_generated,analyses_produced,observations_persisted,error) " +
+      "(run_id,region_id,market_collection_id,observed_at,completed_at,status,candidates_generated,analyses_produced,observations_persisted,economic_operations_created,economic_operation_observations_persisted,error) " +
       "VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) " +
       "ON CONFLICT (run_id) DO UPDATE SET " +
       "region_id=EXCLUDED.region_id,market_collection_id=EXCLUDED.market_collection_id,observed_at=EXCLUDED.observed_at," +
       "completed_at=EXCLUDED.completed_at,status=EXCLUDED.status,candidates_generated=EXCLUDED.candidates_generated," +
-      "analyses_produced=EXCLUDED.analyses_produced,observations_persisted=EXCLUDED.observations_persisted,error=EXCLUDED.error",
+      "analyses_produced=EXCLUDED.analyses_produced,observations_persisted=EXCLUDED.observations_persisted,economic_operations_created=EXCLUDED.economic_operations_created,economic_operation_observations_persisted=EXCLUDED.economic_operation_observations_persisted,error=EXCLUDED.error",
       [
         run.run_id,
         run.region_id,
