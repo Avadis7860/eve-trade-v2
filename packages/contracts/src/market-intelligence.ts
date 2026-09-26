@@ -16,7 +16,8 @@ export interface MarketLiquiditySnapshot {
   best_sell_depth: number | null;
   best_buy_depth: number | null;
   requested_quantity: number | null;
-  quantity_coverage: number | null;
+  sell_quantity_coverage: number | null;
+  buy_quantity_coverage: number | null;
   depth_levels_considered: number;
   status: AvailabilityStatus;
   provenance: SourceProvenance | null;
@@ -52,13 +53,11 @@ export interface HistoricalPricePosition {
 }
 
 export type MarketBookAnomalyKind =
-  | "LIQUIDITY_DRAIN"
-  | "LARGE_BUY_SWEEP"
-  | "LARGE_SELL_WALL"
-  | "RAPID_RELIST"
-  | "PRICE_GAP"
-  | "SUPPLY_COLLAPSE"
-  | "DEMAND_SURGE";
+  | "SELL_LIQUIDITY_DROP"
+  | "BUY_LIQUIDITY_DROP"
+  | "SELL_LIQUIDITY_INCREASE"
+  | "BUY_LIQUIDITY_INCREASE"
+  | "PRICE_GAP";
 
 export interface MarketBookAnomaly {
   kind: MarketBookAnomalyKind;
