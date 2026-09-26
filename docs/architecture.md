@@ -353,3 +353,21 @@ Market intelligence reuses the existing complete canonical order book and persis
 Prediction and scoring remain downstream analytical layers. Neither changes operation state nor manufactures execution evidence. The API exposes opportunities and economic operations through separate read-only contracts.
 
 See `docs/phase-08.3-economic-model.md` for the detailed contract and limitations.
+
+### Economic operation state boundary
+
+Economic operations are an independent lifecycle layer between opportunity observations and positions. Operation identity is independent of market order_id, issuer, observing character and market snapshot.
+
+planned public opportunity
+        |
+        v
+EconomicOperation (state_kind=PLANNED)
+        |
+        +--> observed character evidence (state_kind=OBSERVED)
+        |
+        +--> maker disposition projection (state_kind=PROJECTED)
+        |
+        v
+positions / terminal observed result
+
+The scope and provenance contract remains explicit: source_kind, source_id, principal_scope, principal_id, character_id, order evidence IDs and issuer are distinct facts. A character observing PUBLIC evidence does not thereby become the economic owner.
