@@ -126,6 +126,7 @@ test("missing fee configuration remains explicit instead of becoming zero", asyn
       observedAt: marketState.observed_at,
       deployableCapital: 10_000,
       salesTaxRate: null,
+      candidateStrategy: "MARKET_TO_MARKET",
     },
   );
 
