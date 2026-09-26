@@ -120,6 +120,17 @@ test("historical price position is descriptive and produces an explicit regime",
   assert.equal(result.status, "COMPLETE");
 });
 
+test("history recent metrics follow observed_at, not snapshot_id", () => {
+  const history = [
+    metrics("uuid-z", 100, 100, "2026-09-26T04:00:00Z"),
+    metrics("uuid-a", 110, 100, "2026-09-26T05:00:00Z"),
+    metrics("uuid-m", 120, 100, "2026-09-26T06:00:00Z"),
+  ];
+  const result = deriveHistoricalPricePosition(34, 125, history);
+  assert.ok(result.recent_change !== null);
+  assert.ok(Math.abs(result.recent_change! - (125 - 110) / 110) < 1e-12);
+});
+
 test("missing history stays unknown instead of becoming a neutral numeric value", () => {
   const result = deriveHistoricalPricePosition(34, 120, []);
   assert.equal(result.range_position, null);
