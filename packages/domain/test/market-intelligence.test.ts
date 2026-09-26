@@ -51,7 +51,8 @@ test("depth and quantity coverage are derived from the visible order book", () =
   assert.equal(result.visible_demand, 55);
   assert.equal(result.best_sell_depth, 28);
   assert.equal(result.best_buy_depth, 55);
-  assert.equal(result.quantity_coverage, 1);
+  assert.equal(result.sell_quantity_coverage, 1);
+  assert.equal(result.buy_quantity_coverage, 1);
   assert.equal(result.depth_levels_considered, 2);
 });
 
