@@ -702,6 +702,72 @@ test("maker disposition remains a projection and never becomes a synthetic fill"
   );
 });
 
+test("maker projection ignores incompatible station-local buy orders", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request({
+    scenario: {
+      ...request().scenario,
+      disposition: {
+        ...request().scenario.disposition,
+        market: {
+          ...request().scenario.disposition.market,
+          execution_mode: "MAKER_SELL",
+          execution_location: location,
+          order_range: "station",
+          limit_price: 110,
+        },
+      },
+    },
+    fee_context: {
+      sales_tax_rate: 0,
+      broker_fee_rate: 0,
+      source: "EXPLICIT",
+    },
+  });
+  input.disposition_market!.market.orders = [
+    baseOrder({ order_id: 100, is_buy_order: true, price: 120, range: "station", location_id: 60008494, system_id: 30002187 }),
+    baseOrder({ order_id: 101, is_buy_order: true, price: 100, range: "station", price: 100 }),
+  ];
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "PROJECTED");
+  assert.deepEqual(result.disposition_leg.simulated_fills, []);
+});
+
+test("maker projection rejects a compatible visible buy above the maker price", async () => {
+  const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
+  const input = request({
+    scenario: {
+      ...request().scenario,
+      disposition: {
+        ...request().scenario.disposition,
+        market: {
+          ...request().scenario.disposition.market,
+          execution_mode: "MAKER_SELL",
+          execution_location: location,
+          order_range: "station",
+          limit_price: 110,
+        },
+      },
+    },
+    fee_context: {
+      sales_tax_rate: 0,
+      broker_fee_rate: 0,
+      source: "EXPLICIT",
+    },
+  });
+  input.disposition_market!.market.orders = [
+    baseOrder({ order_id: 102, is_buy_order: true, price: 120, range: "region", location_id: 60008494, system_id: 30002187 }),
+  ];
+
+  const result = analyzeTradeRequest(input);
+
+  assert.equal(result.status, "NOT_EXECUTABLE");
+  assert.equal(result.disposition_leg.filled_quantity, 0);
+  assert.ok(result.status_reasons.some((item) => item.code === "SCENARIO_INVALID"));
+});
+
 test("character-scoped market evidence cannot be simulated as public liquidity", async () => {
   const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
   const input = request();
