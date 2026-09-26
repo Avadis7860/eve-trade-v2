@@ -70,6 +70,7 @@ test("operation identity and lifecycle are independent of order evidence", () =>
   assert.equal(acquired.remaining_quantity, 10_000);
   assert.equal(acquired.position?.quantity, 10_000);
   assert.equal(acquired.position?.operation_id, "operation-1");
+  assert.equal(acquired.state_kind, "OBSERVED");
 });
 
 test("a positive sub-result does not complete a 10000-unit operation after one disposition", () => {
