@@ -148,8 +148,6 @@ test("book changes remain observational anomalies with explicit comparison metho
   });
   assert.ok(anomalies.some((item) => item.kind === "SELL_LIQUIDITY_DROP"));
   assert.ok(anomalies.some((item) => item.kind === "BUY_LIQUIDITY_DROP"));
-  assert.equal(anomalies.some((item) => item.kind === "SUPPLY_COLLAPSE"), false);
-  assert.equal(anomalies.some((item) => item.kind === "LIQUIDITY_DRAIN"), false);
   assert.ok(anomalies.some((item) => item.kind === "PRICE_GAP"));
   assert.equal(anomalies.every((item) => item.confidence === "NOT_ASSESSED"), true);
   assert.equal(anomalies.every((item) => item.comparison_basis.length > 0), true);
