@@ -44,7 +44,7 @@ The Phase 5 tables preserve the original scenario and Phase 4 analytical payload
 - append-only operation observations with lifecycle, quantity, result, evidence, scope and provenance;
 - indexes for operation/opportunity and operation history.
 
-Operation observations are derived/persisted state and do not represent order execution unless their explicit evidence proves it.
+Operation observations are derived/persisted state and do not represent order execution unless their explicit evidence proves it. Replaying an observation_id is idempotent only when the canonical payload is identical; a same-ID payload mismatch is rejected. Parent identity and observation history are both protected as append-only boundaries.
 
 
 008_economic_operation_immutability.sql creates:
