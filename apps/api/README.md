@@ -41,7 +41,7 @@ Public routes:
 - `GET /api/v1/operations`
 - `GET /api/v1/operations/:operationId`
 
-The API composes persisted opportunity observations with the deterministic scoring domain function. It also exposes persisted EconomicOperation state and history through a read-only boundary. It does not duplicate domain lifecycle rules.
+The API composes persisted opportunity observations with the deterministic scoring domain function. It also exposes persisted EconomicOperation state and history through a read-only boundary. Operation responses expose state_at + state_kind, so projected state cannot be mislabeled as observed. The API does not duplicate domain lifecycle rules.
 
 The default read scope is `PUBLIC`. CHARACTER and CORPORATION data require an explicit authorized scope policy supplied by the application host.
 
