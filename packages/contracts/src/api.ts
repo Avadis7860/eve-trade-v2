@@ -125,6 +125,7 @@ import type {
   EconomicEvaluationState,
   EconomicOperationLifecycleState,
   EconomicOperationScope,
+  EconomicOperationStateKind,
   Position,
 } from "./economic-operation.js";
 
@@ -148,7 +149,8 @@ export interface ApiEconomicOperationSummary {
   position: Position | null;
   scope: EconomicOperationScope;
   provenance: EconomicOperation["provenance"];
-  observed_at: string;
+  state_at: string;
+  state_kind: EconomicOperationStateKind;
 }
 
 export interface ApiEconomicOperationDetail extends ApiEconomicOperationSummary {
