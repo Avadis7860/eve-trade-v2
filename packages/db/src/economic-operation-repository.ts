@@ -69,6 +69,23 @@ export class EconomicOperationRepository {
         );
       }
 
+      const canonicalEvidence = [
+        ...operation.acquisition_evidence.flatMap((item) => item.evidence),
+        ...operation.disposition_evidence.flatMap((item) => item.evidence),
+      ];
+      const canonicalObservation = {
+        operation_id: operation.operation_id,
+        observed_at: new Date(operation.updated_at).toISOString(),
+        lifecycle_state: operation.lifecycle_state,
+        evaluation_state: operation.evaluation_state,
+        acquired_quantity: operation.acquired_quantity,
+        disposed_quantity: operation.disposed_quantity,
+        remaining_quantity: operation.remaining_quantity,
+        operation_state: operation,
+        evidence: canonicalEvidence,
+        provenance: operation.provenance,
+      };
+
       await client.query(
         "INSERT INTO economic_operation_observations " +
         "(observation_id,operation_id,observed_at,lifecycle_state,evaluation_state,acquired_quantity,disposed_quantity,remaining_quantity,operation_state,evidence,provenance) " +
@@ -76,21 +93,45 @@ export class EconomicOperationRepository {
         "ON CONFLICT (observation_id) DO NOTHING",
         [
           observationId,
-          operation.operation_id,
+          canonicalObservation.operation_id,
           operation.updated_at,
-          operation.lifecycle_state,
-          operation.evaluation_state,
-          operation.acquired_quantity,
-          operation.disposed_quantity,
-          operation.remaining_quantity,
-          JSON.stringify(operation),
-          JSON.stringify([
-            ...operation.acquisition_evidence.flatMap((item) => item.evidence),
-            ...operation.disposition_evidence.flatMap((item) => item.evidence),
-          ]),
-          JSON.stringify(operation.provenance),
+          canonicalObservation.lifecycle_state,
+          canonicalObservation.evaluation_state,
+          canonicalObservation.acquired_quantity,
+          canonicalObservation.disposed_quantity,
+          canonicalObservation.remaining_quantity,
+          JSON.stringify(canonicalObservation.operation_state),
+          JSON.stringify(canonicalObservation.evidence),
+          JSON.stringify(canonicalObservation.provenance),
         ],
       );
+
+      const existingObservation = await client.query(
+        "SELECT operation_id,observed_at,lifecycle_state,evaluation_state,acquired_quantity,disposed_quantity,remaining_quantity,operation_state,evidence,provenance " +
+        "FROM economic_operation_observations WHERE observation_id=$1",
+        [observationId],
+      );
+      const observationRow = existingObservation.rows[0];
+      const persistedObservation = observationRow
+        ? {
+            operation_id: observationRow.operation_id,
+            observed_at: new Date(observationRow.observed_at).toISOString(),
+            lifecycle_state: observationRow.lifecycle_state,
+            evaluation_state: observationRow.evaluation_state,
+            acquired_quantity: Number(observationRow.acquired_quantity),
+            disposed_quantity: Number(observationRow.disposed_quantity),
+            remaining_quantity: Number(observationRow.remaining_quantity),
+            operation_state: observationRow.operation_state,
+            evidence: observationRow.evidence,
+            provenance: observationRow.provenance,
+          }
+        : null;
+
+      if (!persistedObservation || !sameJson(persistedObservation, canonicalObservation)) {
+        throw new Error(
+          "economic operation observation conflict: observation_id already exists with different canonical payload",
+        );
+      }
 
       await client.query("COMMIT");
     } catch (error) {
