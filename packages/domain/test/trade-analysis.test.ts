@@ -1111,8 +1111,9 @@ test("maker sell crossing the visible best buy is rejected as an invalid scenari
       ...request().scenario,
       destination: location,
       disposition: {
-        source: "MARKET",
+        ...request().scenario.disposition,
         market: {
+          ...request().scenario.disposition.market,
           execution_mode: "MAKER_SELL",
           execution_location: location,
           quantity: 5,
@@ -1121,28 +1122,10 @@ test("maker sell crossing the visible best buy is rejected as an invalid scenari
         },
       },
     },
-    disposition_market: snapshot([
-      baseOrder({ order_id: 200, price: 110, volume_remain: 20 }),
-      baseOrder({
-        order_id: 201,
-        is_buy_order: true,
-        price: 100,
-        volume_remain: 20,
-        location_id: 60003760,
-        system_id: 30000142,
-      }),
-    ]),
     fee_context: {
       broker_fee_rate: 0,
       sales_tax_rate: 0,
       source: "EXPLICIT",
-    },
-    logistics_context: {
-      status: "COMPLETE",
-      cost: 0,
-      jump_count: 0,
-      travel_time_seconds: 0,
-      provenance: null,
     },
     constraints: {
       max_quantity: null,
@@ -1152,15 +1135,24 @@ test("maker sell crossing the visible best buy is rejected as an invalid scenari
     },
   });
 
+  input.disposition_market!.market.orders = [
+    baseOrder({ order_id: 200, price: 110, volume_remain: 20 }),
+    baseOrder({
+      order_id: 201,
+      is_buy_order: true,
+      price: 100,
+      volume_remain: 20,
+    }),
+  ];
+
   const result = analyzeTradeRequest(input);
   assert.equal(result.status, "NOT_EXECUTABLE");
-  assert.equal(
+  assert.ok(
     result.status_reasons.some(
       (item) =>
         item.code === "SCENARIO_INVALID" &&
         item.message.includes("visible best buy"),
     ),
-    true,
   );
   assert.equal(result.disposition_leg.filled_quantity, 0);
   assert.deepEqual(result.disposition_leg.simulated_fills, []);
