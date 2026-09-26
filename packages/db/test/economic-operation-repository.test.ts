@@ -60,6 +60,7 @@ test("persists economic operation snapshots idempotently and preserves history",
       remaining_quantity: 5,
       lifecycle_state: "OPEN" as const,
       evaluation_state: "ECONOMICALLY_EVALUABLE" as const,
+      state_kind: "OBSERVED" as const,
       acquisition_mode: "TAKER_AGAINST_SELL" as const,
       disposition_mode: "TAKER_AGAINST_BUY" as const,
       acquisition_evidence: [{
