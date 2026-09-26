@@ -231,6 +231,7 @@ export function createEconomicOperation(
     remaining_quantity: 0,
     lifecycle_state: "DETECTED",
     evaluation_state: "ECONOMICALLY_UNAVAILABLE",
+    state_kind: "PLANNED",
     acquisition_mode: input.acquisition_mode,
     disposition_mode: input.disposition_mode,
     acquisition_evidence: [],
@@ -268,6 +269,7 @@ export function planAcquisition(
   }
   return withState(operation, {
     lifecycle_state: "ACQUISITION_PLANNED",
+    state_kind: "PLANNED",
     updated_at: observedAt,
   });
 }
@@ -290,6 +292,7 @@ export function recordObservedAcquisition(
     ...operation,
     acquisition_evidence: [...operation.acquisition_evidence, record],
     acquired_quantity: operation.acquired_quantity + input.quantity,
+    state_kind: "OBSERVED",
     updated_at: input.observed_at,
     provenance: [...new Map(
       [...operation.provenance, ...input.provenance].map((item) => [JSON.stringify(item), item]),
@@ -320,7 +323,12 @@ export function recordObservedDisposition(
     ...operation,
     disposition_evidence: [...operation.disposition_evidence, record],
     disposed_quantity: operation.disposed_quantity + input.quantity,
+    projected_disposition: null,
+    state_kind: "OBSERVED",
     updated_at: input.observed_at,
+    provenance: [...new Map(
+      [...operation.provenance, ...input.provenance].map((item) => [JSON.stringify(item), item]),
+    ).values()],
   };
   return withState(next, {});
 }
@@ -343,6 +351,7 @@ export function projectMakerSellDisposition(
   };
   return withState(operation, {
     projected_disposition: projected,
+    state_kind: "PROJECTED",
     updated_at: input.projected_at,
   });
 }
