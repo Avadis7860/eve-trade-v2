@@ -21,5 +21,7 @@ export interface OpportunityPipelineRun {
   candidates_generated: number;
   analyses_produced: number;
   observations_persisted: number;
+  economic_operations_created?: number;
+  economic_operation_observations_persisted?: number;
   error: OpportunityPipelineError | null;
 }
