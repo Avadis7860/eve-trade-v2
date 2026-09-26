@@ -58,12 +58,12 @@ OpportunityObservation
 EconomicOperation (ACQUISITION_PLANNED)
 ```
 
-The planned operation records public market provenance and a stable operation identity derived from the opportunity identity. At this stage:
+The planned operation records public market provenance and its own operation identity. The opportunity identifier is retained as a relationship, not as the operation identity. At this stage:
 
 - `acquired_quantity = 0`;
 - no acquisition evidence is fabricated;
 - `remaining_quantity = 0` because no quantity has yet been observed as acquired;
-- later observed acquisition evidence must explicitly call the economic-operation observation API/domain boundary.
+- later observed acquisition/disposition evidence must explicitly cross the economic-operation observation boundary. The production pipeline accepts such evidence only through an explicit resolver supplied by its caller; it never infers fills from market changes, missing orders or ambiguous wallet activity.
 
 The worker therefore persists a plan, not a claim that an order was placed or filled.
 
@@ -198,7 +198,7 @@ Current visible book data can expose:
 
 This is visible liquidity only. It is not a guarantee of future supply or maker-order execution. Candidate depth is bounded to preserve deterministic complexity.
 
-For `BUY_AND_RELIST`, the maker target is a policy-derived reference price from later visible sell depth. It is a scenario input, not a prediction of fill probability or time-to-fill.
+For `BUY_AND_RELIST`, the maker target is a policy-derived reference price from later visible sell depth. ESI order `min_volume` is respected by the taker simulator; an order is not simulated when the executable request against it would be below its declared minimum volume. It is a scenario input, not a prediction of fill probability or time-to-fill.
 
 ### Trade-day coverage
 
@@ -272,7 +272,7 @@ Advice
 
 None of these layers changes the operation lifecycle or creates execution evidence.
 
-The current API can expose scoring for opportunities and explicit operation state separately. Live prediction persistence is not fabricated where no measured prediction artifact exists.
+The current API can expose scoring for opportunities and explicit operation state separately. Pipeline status also exposes how many economic operations and operation observations were actually persisted, so a successful market cycle cannot be mistaken for successful operation materialization. Live prediction persistence is not fabricated where no measured prediction artifact exists.
 
 ## Persistence semantics
 
