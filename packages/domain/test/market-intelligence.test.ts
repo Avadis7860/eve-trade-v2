@@ -83,7 +83,12 @@ test("trade days are liquidity coverage, never a guaranteed depletion forecast",
   assert.equal(deriveTradeDayCoverage(1000, 0).status, "ERROR");
 });
 
-function metrics(snapshot_id: string, bestSell: number, volume = 100): MarketSnapshotTypeMetrics {
+function metrics(
+  snapshot_id: string,
+  bestSell: number,
+  volume = 100,
+  observed_at = "2026-09-26T04:00:00Z",
+): MarketSnapshotTypeMetrics & { observed_at: string } {
   return {
     snapshot_id,
     type_id: 34,
@@ -95,6 +100,7 @@ function metrics(snapshot_id: string, bestSell: number, volume = 100): MarketSna
     spread_relative: 5 / bestSell,
     buy_visible_volume: volume,
     sell_visible_volume: volume,
+    observed_at,
   };
 }
 
