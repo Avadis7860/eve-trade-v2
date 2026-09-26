@@ -119,6 +119,43 @@ test("depth-bounded candidate generation exposes multiple visible levels without
 });
 
 
+test("depth policy hard-bounds an excessive requested level count", () => {
+  const sells = Array.from({ length: 25 }, (_, index) =>
+    order({
+      order_id: 1000 + index,
+      price: 100 + index,
+      volume_remain: 1,
+      location_id: 60003760,
+      system_id: 30000142,
+    }),
+  );
+  const scenarios = generateMarketTradeCandidates(
+    market([
+      ...sells,
+      order({
+        order_id: 2000,
+        is_buy_order: true,
+        price: 50,
+        volume_remain: 100,
+        location_id: 60003760,
+        system_id: 30000142,
+      }),
+    ]),
+    {
+      execution_order_range: "region",
+      max_depth_levels: 10_000,
+      maker_sell_buffer_levels: 10_000,
+      max_candidate_quantity: null,
+      strategy: "BUY_AND_RELIST",
+    },
+  );
+
+  assert.equal(scenarios.length, 1);
+  assert.equal(scenarios[0]?.requested_quantity, 20);
+  assert.equal(scenarios[0]?.acquisition.market?.limit_price, 119);
+  assert.equal(scenarios[0]?.disposition.market.limit_price, 124);
+});
+
 test("BUY_AND_RELIST rejects a remote buy order that can reach the maker station", () => {
   const scenarios = generateMarketTradeCandidates(
     market([
