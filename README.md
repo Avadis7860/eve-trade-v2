@@ -70,7 +70,7 @@ A positive sub-result never closes an incomplete operation. Order IDs remain evi
 
 ## Market intelligence
 
-The market layer already persists order-book depth and historical observations. Phase 08.3 adds deterministic coverage metrics, descriptive historical range context and explicit book-change anomalies without treating liquidity as guaranteed future supply or anomalies as actor intent.
+The market layer already persists order-book depth and historical observations. Phase 08.3 adds deterministic side-specific depth/coverage metrics, historical calculations ordered by observed_at, and descriptive book-change anomalies. SELL and BUY coverage are separate metrics; observed liquidity is not a guarantee of future fills and a snapshot delta is not an actor-intent claim.
 
 ### Prediction
 
