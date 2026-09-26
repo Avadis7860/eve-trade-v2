@@ -55,6 +55,7 @@ test("operation identity and lifecycle are independent of order evidence", () =>
   const planned = planAcquisition(created, "2026-09-26T04:01:00Z");
   assert.equal(planned.operation_id, "operation-1");
   assert.equal(planned.lifecycle_state, "ACQUISITION_PLANNED");
+  assert.equal(planned.state_kind, "PLANNED");
 
   const acquired = recordObservedAcquisition(planned, {
     record_id: "acq-1",
