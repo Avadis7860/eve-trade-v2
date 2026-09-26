@@ -119,6 +119,25 @@ test("depth-bounded candidate generation exposes multiple visible levels without
 });
 
 
+test("BUY_AND_RELIST never imports a maker target price from another station", () => {
+  const scenarios = generateMarketTradeCandidates(
+    market([
+      order({ order_id: 10, price: 100, volume_remain: 5, location_id: 60003760, system_id: 30000142 }),
+      order({ order_id: 11, price: 110, volume_remain: 5, location_id: 60008494, system_id: 30002187 }),
+      order({ order_id: 20, is_buy_order: true, price: 95, volume_remain: 100, location_id: 60003760, system_id: 30000142 }),
+    ]),
+    {
+      execution_order_range: "region",
+      max_depth_levels: 1,
+      maker_sell_buffer_levels: 1,
+      max_candidate_quantity: null,
+      strategy: "BUY_AND_RELIST",
+    },
+  );
+
+  assert.equal(scenarios.length, 0);
+});
+
 test("BUY_AND_RELIST models buying visible sell liquidity then projecting a maker sell", () => {
   const scenarios = generateMarketTradeCandidates(
     market([
