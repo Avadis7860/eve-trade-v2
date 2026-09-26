@@ -1151,9 +1151,8 @@ test("maker sell crossing the visible best buy is rejected as an invalid scenari
     result.status_reasons.some(
       (item) =>
         item.code === "SCENARIO_INVALID" &&
-        item.message.includes("visible best buy"),
+        item.message.includes("visible compatible best buy"),
     ),
-    JSON.stringify(result.status_reasons),
   );
   assert.equal(result.disposition_leg.filled_quantity, 0);
   assert.deepEqual(result.disposition_leg.simulated_fills, []);
