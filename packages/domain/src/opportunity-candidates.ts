@@ -17,7 +17,7 @@ export interface OpportunityCandidatePolicy {
   strategy?: OpportunityCandidateStrategy;
 }
 
-const DEFAULT_MAX_DEPTH_LEVELS = 5;
+export const DEFAULT_MAX_DEPTH_LEVELS = 5;
 
 export const DEFAULT_OPPORTUNITY_CANDIDATE_POLICY: OpportunityCandidatePolicy = {
   execution_order_range: "region",
@@ -86,33 +86,91 @@ export function generateMarketTradeCandidates(
     const orders = byType.get(typeId)!;
 
     if (strategy === "BUY_AND_RELIST") {
-      const acquisitionDepth = depthQuantity(orders, false, maxDepth);
-      const targetDepth = depthQuantity(orders, false, maxDepth + bufferLevels);
-      if (acquisitionDepth === null || targetDepth === null) continue;
-      if (targetDepth.limitPrice <= acquisitionDepth.limitPrice) continue;
+      const sellOrders = orders.filter(
+        (order) => !order.is_buy_order && order.volume_remain > 0,
+      );
+      const stationKeys = [
+        ...new Set(
+          sellOrders.map((order) => `${order.system_id}:${order.location_id}`),
+        ),
+      ].sort();
 
-      const bestBuy = depthQuantity(orders, true, 1);
-      if (bestBuy !== null && bestBuy.first.price >= targetDepth.limitPrice) continue;
+      const stationCandidates = stationKeys.flatMap((key) => {
+        const [systemText, locationText] = key.split(":");
+        const systemId = Number(systemText);
+        const locationId = Number(locationText);
+        const localOrders = sellOrders.filter(
+          (order) =>
+            order.system_id === systemId &&
+            order.location_id === locationId,
+        );
+        const acquisitionDepth = depthQuantity(localOrders, false, maxDepth);
+        const targetDepth = depthQuantity(
+          localOrders,
+          false,
+          maxDepth + bufferLevels,
+        );
+        if (
+          acquisitionDepth === null ||
+          targetDepth === null ||
+          targetDepth.limitPrice <= acquisitionDepth.limitPrice
+        ) {
+          return [];
+        }
 
-      const quantity = Math.min(acquisitionDepth.quantity, quantityCap);
-      if (!Number.isSafeInteger(quantity) || quantity <= 0) continue;
+        const localBestBuy = depthQuantity(
+          orders.filter(
+            (order) =>
+              order.is_buy_order &&
+              order.volume_remain > 0 &&
+              order.system_id === systemId &&
+              order.location_id === locationId,
+          ),
+          true,
+          1,
+        );
+        if (
+          localBestBuy !== null &&
+          localBestBuy.first.price >= targetDepth.limitPrice
+        ) {
+          return [];
+        }
 
-      const origin = {
-        region_id: market.region_id,
-        system_id: acquisitionDepth.first.system_id,
-        location_id: acquisitionDepth.first.location_id,
-      };
+        const quantity = Math.min(acquisitionDepth.quantity, quantityCap);
+        if (!Number.isSafeInteger(quantity) || quantity <= 0) return [];
+
+        return [{
+          acquisitionDepth,
+          targetDepth,
+          quantity,
+          origin: {
+            region_id: market.region_id,
+            system_id: systemId,
+            location_id: locationId,
+          },
+        }];
+      });
+
+      const chosen = stationCandidates.sort(
+        (a, b) =>
+          a.acquisitionDepth.limitPrice - b.acquisitionDepth.limitPrice ||
+          a.targetDepth.limitPrice - b.targetDepth.limitPrice ||
+          a.origin.system_id - b.origin.system_id ||
+          a.origin.location_id - b.origin.location_id,
+      )[0];
+
+      if (!chosen) continue;
 
       scenarios.push({
         type_id: typeId,
-        requested_quantity: quantity,
+        requested_quantity: chosen.quantity,
         acquisition: {
           source: "MARKET",
           market: {
             execution_mode: "TAKER_AGAINST_SELL",
-            execution_location: origin,
-            quantity,
-            limit_price: acquisitionDepth.limitPrice,
+            execution_location: chosen.origin,
+            quantity: chosen.quantity,
+            limit_price: chosen.acquisitionDepth.limitPrice,
             order_range: policy.execution_order_range,
           },
         },
@@ -120,14 +178,14 @@ export function generateMarketTradeCandidates(
           source: "MARKET",
           market: {
             execution_mode: "MAKER_SELL",
-            execution_location: origin,
-            quantity,
-            limit_price: targetDepth.limitPrice,
+            execution_location: chosen.origin,
+            quantity: chosen.quantity,
+            limit_price: chosen.targetDepth.limitPrice,
             order_range: "station",
           },
         },
-        origin,
-        destination: origin,
+        origin: chosen.origin,
+        destination: chosen.origin,
       });
       continue;
     }
