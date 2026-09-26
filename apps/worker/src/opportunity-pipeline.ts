@@ -152,7 +152,15 @@ function createPlannedOperation(
   }
 
   const operation = createEconomicOperation({
-    operation_id: economicOperationId(opportunityId),
+    operation_id: economicOperationId({
+      type_id: scenario.type_id,
+      initial_quantity: scenario.requested_quantity,
+      acquisition_mode: "TAKER_AGAINST_SELL",
+      disposition_mode: dispositionMode,
+      origin: scenario.origin,
+      destination: scenario.destination,
+      created_at: observedAt,
+    }),
     opportunity_id: opportunityId,
     type_id: scenario.type_id,
     initial_quantity: scenario.requested_quantity,
