@@ -1128,7 +1128,7 @@ test("maker sell crossing the visible best buy is rejected as an invalid scenari
         is_buy_order: true,
         price: 100,
         volume_remain: 20,
-        location_id: 60003761,
+        location_id: 60003760,
         system_id: 30000142,
       }),
     ]),
