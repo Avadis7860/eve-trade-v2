@@ -412,7 +412,16 @@ export function simulateTakerAgainstSell(
 }
 
 export function simulateMakerSell(
-  input: Pick<TakerSimulationInput, "snapshot" | "type_id" | "quantity" | "limit_price">,
+  input: Pick<
+    TakerSimulationInput,
+    | "snapshot"
+    | "type_id"
+    | "quantity"
+    | "limit_price"
+    | "execution_location"
+    | "order_range"
+    | "jump_count_by_order_id"
+  >,
 ): TakerSimulationResult {
   const reasons: TradeAnalysisReason[] = [];
   if (invalidQuantity(input.quantity)) {
@@ -428,24 +437,64 @@ export function simulateMakerSell(
       true,
     ));
   }
+  if (parseMarketOrderRange(input.order_range) === null) {
+    reasons.push(reason(
+      "SCENARIO_INVALID",
+      "maker sell order range is not a supported ESI market range",
+      true,
+    ));
+  }
 
-  const bestBuy = input.snapshot.market.orders
-    .filter(
-      (order) =>
-        order.type_id === input.type_id &&
-        order.is_buy_order &&
-        order.volume_remain > 0,
-    )
-    .sort((a, b) => b.price - a.price || a.order_id - b.order_id)[0];
+  const compatibleBuys: EsiMarketOrder[] = [];
+  let unknownRangeCount = 0;
+  for (const order of input.snapshot.market.orders) {
+    if (
+      order.type_id !== input.type_id ||
+      !order.is_buy_order ||
+      order.volume_remain <= 0 ||
+      order.price < input.limit_price
+    ) continue;
 
-  if (bestBuy && input.limit_price <= bestBuy.price) {
-    reasons.push(
-      reason(
-        "SCENARIO_INVALID",
-        "maker sell limit price must remain above the visible best buy",
-        true,
-      ),
+    const parsedRange = parseMarketOrderRange(order.range);
+    if (parsedRange === null) {
+      unknownRangeCount += 1;
+      continue;
+    }
+
+    const range = evaluateRange(
+      parsedRange,
+      {
+        region_id: input.snapshot.market.region_id,
+        system_id: order.system_id,
+        location_id: order.location_id,
+      },
+      input.execution_location,
+      input.snapshot.market.region_id,
+      input.jump_count_by_order_id?.[String(order.order_id)],
     );
+    if (range.status === "UNKNOWN") {
+      unknownRangeCount += 1;
+      continue;
+    }
+    if (range.status === "COMPATIBLE") compatibleBuys.push(order);
+  }
+
+  if (unknownRangeCount > 0) {
+    reasons.push(reason(
+      "RANGE_UNKNOWN",
+      "some visible buy orders at or above the maker price cannot be classified for the maker location",
+      true,
+    ));
+  }
+
+  compatibleBuys.sort((a, b) => b.price - a.price || a.order_id - b.order_id);
+  const bestBuy = compatibleBuys[0];
+  if (bestBuy && input.limit_price <= bestBuy.price) {
+    reasons.push(reason(
+      "SCENARIO_INVALID",
+      "maker sell limit price must remain above the visible compatible best buy",
+      true,
+    ));
   }
 
   if (reasons.length > 0) {
@@ -773,6 +822,16 @@ function validateMarketLeg(
       reason(
         "QUANTITY_INVALID",
         `${label} quantity must equal the scenario requested quantity`,
+        true,
+      ),
+    );
+  }
+
+  if (parseMarketOrderRange(leg.order_range) === null) {
+    reasons.push(
+      reason(
+        "SCENARIO_INVALID",
+        `${label} order range must be a supported ESI market range`,
         true,
       ),
     );
@@ -1605,6 +1664,8 @@ export function analyzeTradeRequest(
       type_id: scenario.type_id,
       quantity: scenario.requested_quantity,
       limit_price: scenario.disposition.market.limit_price,
+      execution_location: scenario.destination,
+      order_range: scenario.disposition.market.order_range,
     });
     dispositionLeg = {
       execution_mode: result.execution_mode,
