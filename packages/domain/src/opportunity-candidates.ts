@@ -19,6 +19,8 @@ export interface OpportunityCandidatePolicy {
 }
 
 export const DEFAULT_MAX_DEPTH_LEVELS = 5;
+export const MAX_ALLOWED_DEPTH_LEVELS = 20;
+export const MAX_ALLOWED_MAKER_BUFFER_LEVELS = 5;
 
 export const DEFAULT_OPPORTUNITY_CANDIDATE_POLICY: OpportunityCandidatePolicy = {
   execution_order_range: "region",
@@ -78,7 +80,7 @@ export function generateMarketTradeCandidates(
 
   const requestedDepth = policy.max_depth_levels ?? DEFAULT_MAX_DEPTH_LEVELS;
   const maxDepth = Number.isSafeInteger(requestedDepth)
-    ? Math.max(1, requestedDepth)
+    ? Math.min(MAX_ALLOWED_DEPTH_LEVELS, Math.max(1, requestedDepth))
     : DEFAULT_MAX_DEPTH_LEVELS;
   const quantityCap =
     policy.max_candidate_quantity === undefined || policy.max_candidate_quantity === null
@@ -86,7 +88,10 @@ export function generateMarketTradeCandidates(
       : Math.max(1, Math.floor(policy.max_candidate_quantity));
   const bufferLevels = policy.maker_sell_buffer_levels === undefined
     ? 1
-    : Math.max(1, Math.floor(policy.maker_sell_buffer_levels));
+    : Math.min(
+        MAX_ALLOWED_MAKER_BUFFER_LEVELS,
+        Math.max(1, Math.floor(policy.maker_sell_buffer_levels)),
+      );
   const strategy = policy.strategy ?? "MARKET_TO_MARKET";
 
   const byType = new Map<number, EsiMarketOrder[]>();
