@@ -126,6 +126,7 @@ test("projected maker sell is visibly distinct from observed execution", () => {
   assert.equal(projected.projected_disposition?.projected_proceeds, 12_000);
   assert.equal(projected.result.projected_current_result, 1_994);
   assert.equal(projected.lifecycle_state, "OPEN");
+  assert.equal(projected.state_kind, "PROJECTED");
 });
 
 test("terminal result exists only after full observed disposition", () => {
