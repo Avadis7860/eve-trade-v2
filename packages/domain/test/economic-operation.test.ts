@@ -174,6 +174,64 @@ test("unknown acquisition cost keeps economic evaluation explicit", () => {
   assert.equal(acquired.result.observed_current_result, null);
 });
 
+test("observing a public operation does not transfer economic ownership to the observer", () => {
+  const publicProvenance = {
+    source_kind: "ESI" as const,
+    source_id: "market-public",
+    endpoint: "/markets/10000002/orders/",
+    principal_scope: "PUBLIC" as const,
+  };
+  const characterProvenance = {
+    source_kind: "ESI" as const,
+    source_id: "character:42",
+    endpoint: "/characters/42/transactions/",
+    principal_scope: "CHARACTER" as const,
+    principal_id: 42,
+  };
+  const publicOperation = createEconomicOperation({
+    operation_id: "public-op-1",
+    opportunity_id: "opportunity-public",
+    type_id: 34,
+    initial_quantity: 10,
+    acquisition_mode: "TAKER_AGAINST_SELL",
+    disposition_mode: "MAKER_SELL",
+    scope: {
+      principal_scope: "PUBLIC",
+      principal_id: null,
+      character_id: null,
+      provenance: publicProvenance,
+    },
+    provenance: [publicProvenance],
+    created_at: "2026-09-26T04:00:00Z",
+  });
+
+  const observed = recordObservedAcquisition(publicOperation, {
+    record_id: "acq-character-1",
+    observed_at: "2026-09-26T04:05:00Z",
+    quantity: 2,
+    cost: 200,
+    evidence: [{
+      evidence_id: "tx-character-1",
+      kind: "TRANSACTION",
+      observed_at: "2026-09-26T04:05:00Z",
+      quantity: 2,
+      unit_price: 100,
+      value: 200,
+      order_id: 123,
+      transaction_id: 456,
+      issuer: 999,
+      provenance: characterProvenance,
+    }],
+    provenance: [characterProvenance],
+  });
+
+  assert.equal(observed.scope.principal_scope, "PUBLIC");
+  assert.equal(observed.scope.principal_id, null);
+  assert.equal(observed.scope.character_id, null);
+  assert.equal(observed.state_kind, "OBSERVED");
+  assert.equal(observed.provenance.some((item) => item.source_id === "character:42"), true);
+});
+
 test("position duration remains a derived observation and never changes operation identity", () => {
   const acquired = recordObservedAcquisition(operation(10), {
     record_id: "acq-1",
