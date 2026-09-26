@@ -684,8 +684,19 @@ test("maker modes are reserved and never executable", async () => {
 
 test("maker disposition remains a projection and never becomes a synthetic fill", async () => {
   const { analyzeTradeRequest } = await import("../src/trade-analysis.js");
-  const input = request();
-  input.scenario.disposition.market.execution_mode = "MAKER_SELL";
+  const input = request({
+    scenario: {
+      ...request().scenario,
+      disposition: {
+        ...request().scenario.disposition,
+        market: {
+          ...request().scenario.disposition.market,
+          execution_mode: "MAKER_SELL",
+          limit_price: 100,
+        },
+      },
+    },
+  });
   input.fee_context.sales_tax_rate = 0;
   input.fee_context.broker_fee_rate = 0;
   input.fee_context.source = "EXPLICIT";
@@ -1112,7 +1123,14 @@ test("maker sell crossing the visible best buy is rejected as an invalid scenari
     },
     disposition_market: snapshot([
       baseOrder({ order_id: 200, price: 110, volume_remain: 20 }),
-      baseOrder({ order_id: 201, is_buy_order: true, price: 100, volume_remain: 20 }),
+      baseOrder({
+        order_id: 201,
+        is_buy_order: true,
+        price: 100,
+        volume_remain: 20,
+        location_id: 60003761,
+        system_id: 30000142,
+      }),
     ]),
     fee_context: {
       broker_fee_rate: 0,
